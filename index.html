@@ -1012,15 +1012,25 @@ Example:
         content.push({ type: 'text', text: `TEXT INPUT:\n${textVal}` });
       }
 
-      content.push({ type: 'text', text: `Extract all flight booking details from the above inputs. Return ONLY a valid JSON object with these exact keys. For each field include a "source" ("img_1", "img_2", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
+      content.push({ type: 'text', text: `You are a travel booking assistant. You have been given ${state.uploadedDataURLs.length} image(s)${textVal ? ' and pasted text' : ''}. CAREFULLY examine EVERY input — each one may contain different types of information.
+
+Common document types you may see:
+- PASSPORT / ID CARD: Extract passenger name (last, first), nationality, date of birth. The name on the ID is the passenger name.
+- FLIGHT SEARCH RESULTS / AVAILABILITY: Extract origin, destination, date, flight numbers, airline/carrier code, cabin class, departure/arrival times.
+- BOOKING CONFIRMATION / ITINERARY: Extract all flight details plus PNR/confirmation number, passenger names, contact info.
+- EMAIL / TEXT: May contain any combination of the above plus phone numbers, email addresses, special requests.
+
+IMPORTANT: Combine information from ALL sources. For example, passenger name might come from an ID photo while flight details come from a search results screenshot. Do NOT ignore any uploaded file.
+
+Return ONLY a valid JSON object with these exact keys. For each field include a "source" ("img_1", "img_2", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
 
 {
-  "origin": {"value": "JFK", "source": "img_1", "confidence": "high"},
-  "destination": {"value": "LAX", "source": "img_1", "confidence": "high"},
-  "date": {"value": "15MAR", "source": "img_1", "confidence": "high"},
-  "flight_number": {"value": "AA100", "source": "img_1", "confidence": "high"},
-  "cabin": {"value": "Y", "source": "img_1", "confidence": "medium"},
-  "carrier": {"value": "AA", "source": "img_1", "confidence": "high"},
+  "origin": {"value": "JFK", "source": "img_2", "confidence": "high"},
+  "destination": {"value": "LAX", "source": "img_2", "confidence": "high"},
+  "date": {"value": "15MAR", "source": "img_2", "confidence": "high"},
+  "flight_number": {"value": "AA100", "source": "img_2", "confidence": "high"},
+  "cabin": {"value": "Y", "source": "img_2", "confidence": "medium"},
+  "carrier": {"value": "AA", "source": "img_2", "confidence": "high"},
   "passengers": [
     {
       "last": {"value": "SMITH", "source": "img_1", "confidence": "high"},
@@ -1034,8 +1044,13 @@ Example:
   "frequent_flyer": {"value": null, "source": "unknown", "confidence": "low"}
 }
 
-For cabin, map to Sabre codes: Y=economy, C=business, F=first, W=premium economy.
-For date, use DDMON format (e.g. 15MAR).
+Rules:
+- For cabin, map to Sabre codes: Y=economy, C=business, F=first, W=premium economy.
+- For date, use DDMON format (e.g. 15MAR).
+- Passenger names from IDs/passports should be in UPPERCASE.
+- If a search result shows multiple flights, pick the first/best match or the one that appears selected/highlighted.
+- Extract the 2-letter IATA airline code for "carrier" (e.g. AA, UA, DL, BA).
+- If you see a 3-letter airport code, use it directly for origin/destination.
 Return ONLY the JSON. No explanation. No markdown.` });
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1048,7 +1063,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
         },
         body: JSON.stringify({
           model: 'claude-opus-4-6',
-          max_tokens: 1000,
+          max_tokens: 1500,
           messages: [{ role: 'user', content }]
         })
       });

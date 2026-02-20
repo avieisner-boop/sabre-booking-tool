@@ -921,11 +921,22 @@ Example:
       const chip = document.createElement('div');
       chip.className = 'file-chip';
       const isImg = file.type.startsWith('image/');
-      chip.innerHTML = `
-        ${isImg ? `<img src="${state.uploadedDataURLs[i]}" class="thumb">` : '📄'}
-        <span>${file.name}</span>
-        <span class="remove" onclick="removeFile(${i})">✕</span>
-      `;
+      if (isImg) {
+        const thumb = document.createElement('img');
+        thumb.src = state.uploadedDataURLs[i];
+        thumb.className = 'thumb';
+        chip.appendChild(thumb);
+      } else {
+        chip.appendChild(document.createTextNode('📄 '));
+      }
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = file.name;
+      chip.appendChild(nameSpan);
+      const removeSpan = document.createElement('span');
+      removeSpan.className = 'remove';
+      removeSpan.textContent = '✕';
+      removeSpan.onclick = () => removeFile(i);
+      chip.appendChild(removeSpan);
       container.appendChild(chip);
     });
   }
@@ -1026,6 +1037,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
       populatePage2(parsed);
       goToPage(2);
       showStatus('status1', 'success', '');
+      document.getElementById('parseBtn').disabled = false;
 
     } catch(e) {
       showStatus('status1', 'error', 'Parse failed: ' + e.message);
@@ -1169,6 +1181,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const date = document.getElementById('f-date').value.trim();
     const carrier = document.getElementById('f-carrier').value.trim();
     const flightnum = document.getElementById('f-flightnum').value.trim();
+    const cabin = document.getElementById('f-cabin').value || 'Y';
 
     if (!origin || !dest || !date || !carrier) {
       showStatus('status2', 'error', 'Fill required fields: Origin, Destination, Date, and Carrier.');
@@ -1177,16 +1190,16 @@ Return ONLY the JSON. No explanation. No markdown.` });
 
     let cmd;
     if (flightnum) {
-      // Long sell format - direct flight lookup
-      const cabinCode = document.getElementById('f-cabin').value || 'Y';
-      cmd = `1${date}${origin}${dest}/${carrier}`;
+      // Long sell format - direct flight number lookup
+      cmd = `1${carrier}${flightnum}${cabin}${date}${origin}${dest}`;
     } else {
+      // Availability search format
       cmd = `1${date}${origin}${dest}/${carrier}`;
     }
 
     goToPage(3);
     const out = document.getElementById('stage1output');
-    out.innerHTML = cmd;
+    out.textContent = cmd;
     addCopyBtn('stage1output', cmd);
   }
 
@@ -1215,6 +1228,10 @@ Return ONLY the JSON. No explanation. No markdown.` });
           }]
         })
       });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || 'API error');
+      }
       const data = await res.json();
       let raw = data.content[0].text.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
       const parsed = JSON.parse(raw);
@@ -1283,7 +1300,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
 
     const cmd = lines.join('\n');
     const out = document.getElementById('stage2output');
-    out.innerHTML = cmd;
+    out.textContent = cmd;
     addCopyBtn('stage2output', cmd);
   }
 

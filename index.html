@@ -617,8 +617,17 @@
         <input type="text" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
       </div>
     </div>
-    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono);">
+    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono); margin-bottom:1.25rem;">
       ⚠ Key is never stored or transmitted anywhere except directly to Anthropic API from your browser.
+    </div>
+    <div class="api-key-row">
+      <div>
+        <label>Zapier Webhook URL <span style="color:var(--muted)">(optional — auto-logs bookings)</span></label>
+        <input type="text" id="zapierUrl" placeholder="https://hooks.zapier.com/hooks/catch/..." autocomplete="off">
+      </div>
+    </div>
+    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono);">
+      🔗 Connect to Google Sheets, Slack, email, or any Zapier app. Data is sent at each stage: parse, commands, and PNR confirmation.
     </div>
   </div>
 
@@ -881,12 +890,33 @@ Example:
   // STATE
   const state = {
     apiKey: '',
+    zapierUrl: '',
     uploadedFiles: [],
     uploadedDataURLs: [],
     parsedData: {},
     sourceMap: {},
     confidenceMap: {}
   };
+
+  // ZAPIER INTEGRATION
+  async function sendToZapier(event, data) {
+    const url = state.zapierUrl;
+    if (!url) return;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify({
+          event,
+          timestamp: new Date().toISOString(),
+          ...data
+        })
+      });
+    } catch(e) {
+      console.warn('Zapier webhook failed:', e.message);
+    }
+  }
 
   // FILE UPLOAD
   const fileInput = document.getElementById('fileInput');
@@ -959,6 +989,7 @@ Example:
     }
 
     state.apiKey = apiKey;
+    state.zapierUrl = document.getElementById('zapierUrl').value.trim();
     showStatus('status1', 'loading', 'Parsing flight details with Claude AI...');
     document.getElementById('parseBtn').disabled = true;
 
@@ -1038,6 +1069,21 @@ Return ONLY the JSON. No explanation. No markdown.` });
       goToPage(2);
       showStatus('status1', 'success', '');
       document.getElementById('parseBtn').disabled = false;
+
+      // Send parsed data to Zapier
+      sendToZapier('flight_parsed', {
+        origin: parsed.origin?.value,
+        destination: parsed.destination?.value,
+        date: parsed.date?.value,
+        flight_number: parsed.flight_number?.value,
+        cabin: parsed.cabin?.value,
+        carrier: parsed.carrier?.value,
+        passengers: parsed.passengers?.map(p => ({
+          last: p.last?.value, first: p.first?.value, title: p.title?.value
+        })),
+        phone: parsed.phone?.value,
+        email: parsed.email?.value
+      });
 
     } catch(e) {
       showStatus('status1', 'error', 'Parse failed: ' + e.message);
@@ -1201,6 +1247,14 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const out = document.getElementById('stage1output');
     out.textContent = cmd;
     addCopyBtn('stage1output', cmd);
+
+    // Send Stage 1 command to Zapier
+    sendToZapier('stage1_command', {
+      command: cmd,
+      origin, destination: dest, date, carrier,
+      flight_number: flightnum || null,
+      cabin
+    });
   }
 
   // PARSE AVAIL RESPONSE
@@ -1302,6 +1356,16 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const out = document.getElementById('stage2output');
     out.textContent = cmd;
     addCopyBtn('stage2output', cmd);
+
+    // Send Stage 2 command to Zapier
+    sendToZapier('stage2_command', {
+      command: cmd,
+      origin, destination: dest, cabin, line_number: linenum,
+      passenger_count: paxcount,
+      phone, email,
+      ticketing_deadline: tickdate,
+      received_from: rcvdfrom
+    });
   }
 
   function addCopyBtn(containerId, text) {
@@ -1332,7 +1396,17 @@ Return ONLY the JSON. No explanation. No markdown.` });
 
     const log = `${now}\t${pnr}\t${origin}\t${dest}\t${date}\t${last}\t${count} PAX`;
     navigator.clipboard.writeText(log);
-    alert('Log entry copied to clipboard:\n' + log + '\n\nPaste into Google Sheets.');
+
+    // Send PNR confirmation to Zapier
+    sendToZapier('pnr_confirmed', {
+      pnr, origin, destination: dest, date,
+      passenger_name: last,
+      passenger_count: count,
+      booked_date: now
+    });
+
+    const zapMsg = state.zapierUrl ? ' Also sent to Zapier.' : '';
+    alert('Log entry copied to clipboard:\n' + log + '\n\nPaste into Google Sheets.' + zapMsg);
   }
 
   // NAVIGATION

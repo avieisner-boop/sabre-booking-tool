@@ -809,7 +809,7 @@
 <!-- PAGE 3: Sabre Commands -->
 <div class="page" id="page3">
   <div class="page-title">Sabre Command Output</div>
-  <div class="page-sub">// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre's response below, then generate Stage 2.</div>
+  <div class="page-sub" id="page3sub">// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre's response below, then generate Stage 2.</div>
 
   <div id="status3"></div>
 
@@ -824,8 +824,8 @@
     </div>
   </div>
 
-  <!-- SABRE RESPONSE INPUT -->
-  <div class="card">
+  <!-- SABRE RESPONSE INPUT (only for availability search, hidden for direct sell) -->
+  <div class="card" id="availResponseCard">
     <div class="card-title">📥 Paste Sabre Availability Response</div>
     <div style="font-size:0.78rem; color:var(--muted); margin-bottom:0.75rem; font-family:var(--font-mono)">
       After running Stage 1 in Sabre, paste the full terminal response here. AI will identify the correct line number and class.
@@ -1234,9 +1234,10 @@ Return ONLY the JSON. No explanation. No markdown.` });
       return;
     }
 
+    const isDirectSell = !!flightnum;
     let cmd;
-    if (flightnum) {
-      // Long sell format - direct flight number lookup
+    if (isDirectSell) {
+      // Long sell format - direct flight number sell
       cmd = `1${carrier}${flightnum}${cabin}${date}${origin}${dest}`;
     } else {
       // Availability search format
@@ -1248,12 +1249,41 @@ Return ONLY the JSON. No explanation. No markdown.` });
     out.textContent = cmd;
     addCopyBtn('stage1output', cmd);
 
+    // Update Stage 1 label to reflect direct sell vs availability
+    const stage1Label = document.querySelector('#page3 .stage-label span:first-child');
+    if (isDirectSell) {
+      stage1Label.textContent = 'STAGE 1 — Direct Sell (Flight Known)';
+    } else {
+      stage1Label.textContent = 'STAGE 1 — Availability Check';
+    }
+
+    // If flight number is known, this is a direct sell:
+    // hide the availability response section and auto-generate Stage 2
+    const availCard = document.getElementById('availResponseCard');
+    const stage2GenBtn = document.querySelector('#page3 .btn-orange');
+    const pageSub = document.getElementById('page3sub');
+    if (isDirectSell) {
+      availCard.style.display = 'none';
+      stage2GenBtn.style.display = 'none';
+      pageSub.textContent = '// Step 03 — Flight number known. Copy Stage 1 into Sabre, confirm sell, then paste Stage 2.';
+      showStatus('status3', 'success', 'Flight number known — both commands generated. Copy Stage 1 first, then Stage 2.');
+      generateStage2(true); // skip sell-from-availability line
+    } else {
+      availCard.style.display = '';
+      stage2GenBtn.style.display = '';
+      pageSub.textContent = '// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre\'s response below, then generate Stage 2.';
+      showStatus('status3', '', '');
+      // Reset Stage 2 output
+      document.getElementById('stage2output').innerHTML = '<span class="placeholder">Generate Stage 2 after pasting Sabre response above...</span>';
+    }
+
     // Send Stage 1 command to Zapier
     sendToZapier('stage1_command', {
       command: cmd,
       origin, destination: dest, date, carrier,
       flight_number: flightnum || null,
-      cabin
+      cabin,
+      direct_sell: isDirectSell
     });
   }
 
@@ -1297,7 +1327,8 @@ Return ONLY the JSON. No explanation. No markdown.` });
   }
 
   // GENERATE STAGE 2
-  function generateStage2() {
+  // skipSell: when true, omit the 0Y1 sell-from-availability line (used for direct sell flow)
+  function generateStage2(skipSell) {
     const origin = document.getElementById('f-origin').value.trim();
     const dest = document.getElementById('f-dest').value.trim();
     const cabin = document.getElementById('f-cabin').value.trim() || 'Y';
@@ -1316,8 +1347,10 @@ Return ONLY the JSON. No explanation. No markdown.` });
 
     let lines = [];
 
-    // 1. Sell segment
-    lines.push(`0${cabin}${linenum}`);
+    // 1. Sell segment (skip if direct sell — Stage 1 already sold the seat)
+    if (!skipSell) {
+      lines.push(`0${cabin}${linenum}`);
+    }
 
     // 2. Passenger names
     for (let i = 0; i < paxcount; i++) {
@@ -1356,6 +1389,14 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const out = document.getElementById('stage2output');
     out.textContent = cmd;
     addCopyBtn('stage2output', cmd);
+
+    // Update Stage 2 label
+    const stage2Label = document.querySelector('#page3 .card:has(#stage2output) .stage-label span:first-child');
+    if (stage2Label) {
+      stage2Label.textContent = skipSell
+        ? 'STAGE 2 — PNR Completion (paste after Stage 1 confirms)'
+        : 'STAGE 2 — Full PNR Booking Block';
+    }
 
     // Send Stage 2 command to Zapier
     sendToZapier('stage2_command', {

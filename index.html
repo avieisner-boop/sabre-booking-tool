@@ -668,67 +668,20 @@
 
   <div id="status2"></div>
 
-  <!-- FLIGHT DETAILS -->
+  <!-- FLIGHT SEGMENTS (dynamic) -->
   <div class="card">
-    <div class="card-title">✈ Flight Details</div>
-    <div class="form-grid">
-      <div>
-        <div class="field-row">
-          <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-origin"></span>
-          <span class="confidence-dot" id="conf-origin"></span>
-          <button class="quickview-btn" id="qv-origin" onclick="quickview('origin')" style="display:none">👁</button>
-        </div>
-        <input type="text" id="f-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-dest"></span>
-          <span class="confidence-dot" id="conf-dest"></span>
-          <button class="quickview-btn" id="qv-dest" onclick="quickview('dest')" style="display:none">👁</button>
-        </div>
-        <input type="text" id="f-dest" placeholder="LAX" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Travel Date<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-date"></span>
-          <span class="confidence-dot" id="conf-date"></span>
-        </div>
-        <input type="text" id="f-date" placeholder="15MAR" oninput="validateRequired()">
-      </div>
-      <div>
-        <div class="field-row">
-          <label>Flight Number</label>
-          <span class="source-badge manual" id="src-flightnum"></span>
-        </div>
-        <input type="text" id="f-flightnum" placeholder="AA100">
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Cabin Class<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-cabin"></span>
-        </div>
-        <select id="f-cabin" onchange="validateRequired()">
-          <option value="">Select cabin...</option>
-          <option value="Y">Y — Economy</option>
-          <option value="C">C — Business</option>
-          <option value="F">F — First</option>
-          <option value="W">W — Premium Economy</option>
-          <option value="B">B — Economy (discounted)</option>
-          <option value="K">K — Economy (discounted)</option>
-        </select>
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Airline Code<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-carrier"></span>
-        </div>
-        <input type="text" id="f-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-      </div>
+    <div class="card-title">✈ Flight Segments</div>
+    <div>
+      <label>Number of Segments</label>
+      <select id="f-segcount" onchange="renderSegmentFields()">
+        <option value="1">1 — One Way</option>
+        <option value="2">2 — Round Trip</option>
+        <option value="3">3 — Multi-City</option>
+        <option value="4">4 — Multi-City</option>
+      </select>
     </div>
   </div>
+  <div id="segmentFields"></div>
 
   <!-- PASSENGERS -->
   <div class="card">
@@ -1015,22 +968,37 @@ Example:
       content.push({ type: 'text', text: `You are a travel booking assistant. You have been given ${state.uploadedDataURLs.length} image(s)${textVal ? ' and pasted text' : ''}. CAREFULLY examine EVERY input — each one may contain different types of information.
 
 Common document types you may see:
-- PASSPORT / ID CARD: Extract passenger name (last, first), nationality, date of birth. The name on the ID is the passenger name.
-- FLIGHT SEARCH RESULTS / AVAILABILITY: Extract origin, destination, date, flight numbers, airline/carrier code, cabin class, departure/arrival times.
-- BOOKING CONFIRMATION / ITINERARY: Extract all flight details plus PNR/confirmation number, passenger names, contact info.
-- EMAIL / TEXT: May contain any combination of the above plus phone numbers, email addresses, special requests.
+- PASSPORT / ID CARD: Extract passenger name (last, first). The name on the ID is the passenger name.
+- FLIGHT SEARCH RESULTS / AVAILABILITY / ITINERARY: Extract ALL flight segments. A round trip has 2 segments (outbound + return). Extract origin, destination, date, flight number, airline code, booking class for EACH segment.
+- BOOKING CONFIRMATION: Extract all flight details plus passenger names, contact info.
+- EMAIL / TEXT: May contain any of the above plus phone, email, special requests.
 
-IMPORTANT: Combine information from ALL sources. For example, passenger name might come from an ID photo while flight details come from a search results screenshot. Do NOT ignore any uploaded file.
+CRITICAL RULES:
+- Combine information from ALL sources. Name may come from an ID, flights from a search screenshot.
+- Extract EVERY flight segment — do NOT skip return flights. One-way = 1 flight, round trip = 2 flights, multi-city = 3+ flights.
+- Do NOT ignore any uploaded file.
 
-Return ONLY a valid JSON object with these exact keys. For each field include a "source" ("img_1", "img_2", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
+Return ONLY a valid JSON object. For each field include "source" ("img_1", "img_2", "img_3", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
 
 {
-  "origin": {"value": "JFK", "source": "img_2", "confidence": "high"},
-  "destination": {"value": "LAX", "source": "img_2", "confidence": "high"},
-  "date": {"value": "15MAR", "source": "img_2", "confidence": "high"},
-  "flight_number": {"value": "AA100", "source": "img_2", "confidence": "high"},
-  "cabin": {"value": "Y", "source": "img_2", "confidence": "medium"},
-  "carrier": {"value": "AA", "source": "img_2", "confidence": "high"},
+  "flights": [
+    {
+      "origin": {"value": "JFK", "source": "img_2", "confidence": "high"},
+      "destination": {"value": "LHR", "source": "img_2", "confidence": "high"},
+      "date": {"value": "16MAR", "source": "img_1", "confidence": "high"},
+      "flight_number": {"value": "142", "source": "img_3", "confidence": "high"},
+      "carrier": {"value": "AA", "source": "img_3", "confidence": "high"},
+      "booking_class": {"value": "O", "source": "img_3", "confidence": "high"}
+    },
+    {
+      "origin": {"value": "LHR", "source": "img_2", "confidence": "high"},
+      "destination": {"value": "JFK", "source": "img_2", "confidence": "high"},
+      "date": {"value": "23MAR", "source": "img_1", "confidence": "high"},
+      "flight_number": {"value": "103", "source": "img_3", "confidence": "high"},
+      "carrier": {"value": "AA", "source": "img_3", "confidence": "high"},
+      "booking_class": {"value": "R", "source": "img_3", "confidence": "high"}
+    }
+  ],
   "passengers": [
     {
       "last": {"value": "SMITH", "source": "img_1", "confidence": "high"},
@@ -1045,12 +1013,13 @@ Return ONLY a valid JSON object with these exact keys. For each field include a 
 }
 
 Rules:
-- For cabin, map to Sabre codes: Y=economy, C=business, F=first, W=premium economy.
-- For date, use DDMON format (e.g. 15MAR).
-- Passenger names from IDs/passports should be in UPPERCASE.
-- If a search result shows multiple flights, pick the first/best match or the one that appears selected/highlighted.
-- Extract the 2-letter IATA airline code for "carrier" (e.g. AA, UA, DL, BA).
-- If you see a 3-letter airport code, use it directly for origin/destination.
+- "flights" array: one entry per flight segment. Round trips MUST have 2 entries.
+- booking_class: use the specific fare class letter if visible (O, R, B, K, J, etc). If only cabin type is shown, use Y=economy, C=business, F=first, W=premium economy.
+- flight_number: ONLY the numeric part (e.g. "142" not "AA142"). Carrier goes in "carrier" field.
+- date: DDMON format (e.g. 16MAR).
+- Passenger names from IDs should be UPPERCASE.
+- carrier: 2-letter IATA airline code (AA, UA, DL, BA).
+- origin/destination: 3-letter IATA airport code.
 Return ONLY the JSON. No explanation. No markdown.` });
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1087,12 +1056,12 @@ Return ONLY the JSON. No explanation. No markdown.` });
 
       // Send parsed data to Zapier
       sendToZapier('flight_parsed', {
-        origin: parsed.origin?.value,
-        destination: parsed.destination?.value,
-        date: parsed.date?.value,
-        flight_number: parsed.flight_number?.value,
-        cabin: parsed.cabin?.value,
-        carrier: parsed.carrier?.value,
+        flights: parsed.flights?.map(f => ({
+          origin: f.origin?.value, destination: f.destination?.value,
+          date: f.date?.value, flight_number: f.flight_number?.value,
+          carrier: f.carrier?.value, booking_class: f.booking_class?.value
+        })),
+        segment_count: parsed.flights?.length || 1,
         passengers: parsed.passengers?.map(p => ({
           last: p.last?.value, first: p.first?.value, title: p.title?.value
         })),
@@ -1106,40 +1075,102 @@ Return ONLY the JSON. No explanation. No markdown.` });
     }
   }
 
+  // RENDER FLIGHT SEGMENT FIELDS
+  function renderSegmentFields() {
+    const count = parseInt(document.getElementById('f-segcount').value);
+    const container = document.getElementById('segmentFields');
+    container.innerHTML = '';
+    const labels = ['Outbound', 'Return', 'Segment 3', 'Segment 4'];
+    for (let i = 0; i < count; i++) {
+      container.innerHTML += `
+        <div class="card">
+          <div class="card-title" style="color:var(--accent2)">✈ Segment ${i+1} — ${labels[i]}</div>
+          <div class="form-grid">
+            <div>
+              <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
+              <input type="text" id="f-seg${i}-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
+              <input type="text" id="f-seg${i}-dest" placeholder="LHR" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <label class="required-label">Travel Date<span class="req-star">*</span></label>
+              <input type="text" id="f-seg${i}-date" placeholder="16MAR" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <label>Flight Number</label>
+              <input type="text" id="f-seg${i}-flightnum" placeholder="142" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div>
+              <label class="required-label">Booking Class<span class="req-star">*</span></label>
+              <input type="text" id="f-seg${i}-class" placeholder="Y" maxlength="1" title="Fare class: Y/B/O=economy, C/J/R=business, F=first" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <label class="required-label">Airline Code<span class="req-star">*</span></label>
+              <input type="text" id="f-seg${i}-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+          </div>
+        </div>`;
+    }
+    validateRequired();
+  }
+
+  renderSegmentFields(); // init
+
   function populatePage2(d) {
-    const set = (id, field, upper) => {
+    // Handle flights array (new format)
+    if (d.flights?.length) {
+      document.getElementById('f-segcount').value = Math.min(d.flights.length, 4);
+      renderSegmentFields();
+      d.flights.forEach((f, i) => {
+        if (i >= 4) return; // max 4 segments
+        const setField = (suffix, field) => {
+          const el = document.getElementById(`f-seg${i}-${suffix}`);
+          if (!el || !field || !field.value) return;
+          el.value = field.value.toUpperCase();
+        };
+        setField('origin', f.origin);
+        setField('dest', f.destination);
+        setField('date', f.date);
+        setField('flightnum', f.flight_number);
+        setField('class', f.booking_class);
+        setField('carrier', f.carrier);
+      });
+    } else if (d.origin) {
+      // Legacy flat format fallback
+      document.getElementById('f-segcount').value = 1;
+      renderSegmentFields();
+      const setField = (suffix, field) => {
+        const el = document.getElementById(`f-seg0-${suffix}`);
+        if (!el || !field || !field.value) return;
+        el.value = field.value.toUpperCase();
+      };
+      setField('origin', d.origin);
+      setField('dest', d.destination);
+      setField('date', d.date);
+      setField('flightnum', d.flight_number);
+      setField('class', d.cabin);
+      setField('carrier', d.carrier);
+    }
+
+    // Shared fields
+    const set = (id, field) => {
       const el = document.getElementById('f-' + id);
       if (!el || !field || !field.value) return;
-      el.value = upper ? field.value.toUpperCase() : field.value;
-      setSrc('src-' + id, field.source);
-      setConf('conf-' + id, field.confidence);
-      if (field.source && (field.source.startsWith('img') || field.source === 'text')) {
-        const qv = document.getElementById('qv-' + id);
-        if (qv) qv.style.display = 'inline-flex';
-      }
+      el.value = field.value;
     };
-
-    set('origin', d.origin, true);
-    set('dest', d.destination, true);
-    set('date', d.date, true);
-    set('flightnum', d.flight_number);
-    set('carrier', d.carrier, true);
     set('phone', d.phone);
     set('paxphone', d.pax_phone);
     set('email', d.email);
     set('ff', d.frequent_flyer);
 
-    if (d.cabin?.value) {
-      const sel = document.getElementById('f-cabin');
-      sel.value = d.cabin.value;
-      setSrc('src-cabin', d.cabin.source);
-    }
-
+    // Passengers
     if (d.passengers?.length) {
-      const paxcount = d.passengers.length;
-      document.getElementById('f-paxcount').value = paxcount;
+      document.getElementById('f-paxcount').value = Math.min(d.passengers.length, 4);
       updatePaxFields();
       d.passengers.forEach((p, i) => {
+        if (i >= 4) return;
         const last = document.getElementById(`f-last${i}`);
         const first = document.getElementById(`f-first${i}`);
         const title = document.getElementById(`f-title${i}`);
@@ -1155,9 +1186,13 @@ Return ONLY the JSON. No explanation. No markdown.` });
 
     // Confidence summary
     const lowFields = [];
-    ['origin','destination','date','cabin','carrier'].forEach(k => {
-      if (d[k]?.confidence === 'low') lowFields.push(k);
-    });
+    if (d.flights?.length) {
+      d.flights.forEach((f, i) => {
+        ['origin','destination','date','booking_class','carrier'].forEach(k => {
+          if (f[k]?.confidence === 'low') lowFields.push(`seg${i+1} ${k}`);
+        });
+      });
+    }
     if (lowFields.length) {
       const note = document.getElementById('confidenceNote');
       note.style.display = 'block';
@@ -1165,20 +1200,6 @@ Return ONLY the JSON. No explanation. No markdown.` });
     }
 
     validateRequired();
-  }
-
-  function setSrc(id, src) {
-    const el = document.getElementById(id);
-    if (!el || !src || src === 'unknown') return;
-    el.textContent = src;
-    el.className = 'source-badge ' + (src.startsWith('img') ? 'img' : 'txt');
-  }
-
-  function setConf(id, conf) {
-    const el = document.getElementById(id);
-    if (!el || !conf) return;
-    el.className = 'confidence-dot ' + ({high:'conf-high', medium:'conf-med', low:'conf-low'}[conf] || '');
-    el.title = 'Confidence: ' + conf;
   }
 
   function updatePaxFields() {
@@ -1217,15 +1238,26 @@ Return ONLY the JSON. No explanation. No markdown.` });
   updatePaxFields(); // init
 
   function validateRequired() {
-    const fields = ['f-origin','f-dest','f-date','f-cabin','f-carrier','f-phone','f-tickdate','f-rcvdfrom'];
-    fields.forEach(id => {
+    // Segment fields
+    const segcount = parseInt(document.getElementById('f-segcount')?.value || 1);
+    for (let i = 0; i < segcount; i++) {
+      ['origin','dest','date','class','carrier'].forEach(f => {
+        const el = document.getElementById(`f-seg${i}-${f}`);
+        if (!el) return;
+        if (!el.value.trim()) el.classList.add('required-empty');
+        else el.classList.remove('required-empty');
+      });
+    }
+    // Shared required fields
+    ['f-phone','f-tickdate','f-rcvdfrom'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       if (!el.value.trim()) el.classList.add('required-empty');
       else el.classList.remove('required-empty');
     });
-    const count = parseInt(document.getElementById('f-paxcount').value || 1);
-    for (let i = 0; i < count; i++) {
+    // Passenger fields
+    const paxcount = parseInt(document.getElementById('f-paxcount')?.value || 1);
+    for (let i = 0; i < paxcount; i++) {
       ['last','first','title'].forEach(f => {
         const el = document.getElementById(`f-${f}${i}`);
         if (!el) return;
@@ -1235,69 +1267,78 @@ Return ONLY the JSON. No explanation. No markdown.` });
     }
   }
 
-  // GENERATE STAGE 1
+  // GENERATE STAGE 1 (multi-segment)
   function generateStage1() {
-    const origin = document.getElementById('f-origin').value.trim();
-    const dest = document.getElementById('f-dest').value.trim();
-    const date = document.getElementById('f-date').value.trim();
-    const carrier = document.getElementById('f-carrier').value.trim();
-    const flightnum = document.getElementById('f-flightnum').value.trim();
-    const cabin = document.getElementById('f-cabin').value || 'Y';
+    const segcount = parseInt(document.getElementById('f-segcount').value);
+    const segments = [];
 
-    if (!origin || !dest || !date || !carrier) {
-      showStatus('status2', 'error', 'Fill required fields: Origin, Destination, Date, and Carrier.');
-      return;
+    for (let i = 0; i < segcount; i++) {
+      const origin = document.getElementById(`f-seg${i}-origin`).value.trim();
+      const dest = document.getElementById(`f-seg${i}-dest`).value.trim();
+      const date = document.getElementById(`f-seg${i}-date`).value.trim();
+      const carrier = document.getElementById(`f-seg${i}-carrier`).value.trim();
+      const flightnum = document.getElementById(`f-seg${i}-flightnum`).value.trim();
+      const bookingClass = document.getElementById(`f-seg${i}-class`).value.trim() || 'Y';
+
+      if (!origin || !dest || !date || !carrier) {
+        showStatus('status2', 'error', `Fill required fields for Segment ${i+1}: Origin, Destination, Date, and Carrier.`);
+        return;
+      }
+      segments.push({ origin, dest, date, carrier, flightnum, bookingClass });
     }
 
-    const isDirectSell = !!flightnum;
-    let cmd;
-    if (isDirectSell) {
-      // Long sell format - direct flight number sell
-      cmd = `1${carrier}${flightnum}${cabin}${date}${origin}${dest}`;
-    } else {
-      // Availability search format
-      cmd = `1${date}${origin}${dest}/${carrier}`;
-    }
+    state.segments = segments; // store for Stage 2
+    const allHaveFlightNum = segments.every(s => !!s.flightnum);
+    const isDirectSell = allHaveFlightNum;
+
+    const cmds = segments.map(s => {
+      if (s.flightnum) {
+        return `1${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}`;
+      } else {
+        return `1${s.date}${s.origin}${s.dest}/${s.carrier}`;
+      }
+    });
+
+    const cmd = cmds.join('\n');
 
     goToPage(3);
     const out = document.getElementById('stage1output');
     out.textContent = cmd;
     addCopyBtn('stage1output', cmd);
 
-    // Update Stage 1 label to reflect direct sell vs availability
+    // Update labels
     const stage1Label = document.querySelector('#page3 .stage-label span:first-child');
+    const segLabel = segcount > 1 ? `${segcount} segments` : '1 segment';
     if (isDirectSell) {
-      stage1Label.textContent = 'STAGE 1 — Direct Sell (Flight Known)';
+      stage1Label.textContent = `STAGE 1 — Direct Sell (${segLabel})`;
     } else {
       stage1Label.textContent = 'STAGE 1 — Availability Check';
     }
 
-    // If flight number is known, this is a direct sell:
-    // hide the availability response section and auto-generate Stage 2
     const availCard = document.getElementById('availResponseCard');
     const stage2GenBtn = document.querySelector('#page3 .btn-orange');
     const pageSub = document.getElementById('page3sub');
     if (isDirectSell) {
       availCard.style.display = 'none';
       stage2GenBtn.style.display = 'none';
-      pageSub.textContent = '// Step 03 — Flight number known. Copy Stage 1 into Sabre, confirm sell, then paste Stage 2.';
-      showStatus('status3', 'success', 'Flight number known — both commands generated. Copy Stage 1 first, then Stage 2.');
-      generateStage2(true); // skip sell-from-availability line
+      pageSub.textContent = `// Step 03 — All ${segcount} flight(s) known. Paste Stage 1 into Sabre, confirm sells, then paste Stage 2.`;
+      showStatus('status3', 'success', `${segLabel} — both commands generated. Copy Stage 1 first, then Stage 2.`);
+      generateStage2(true);
     } else {
       availCard.style.display = '';
       stage2GenBtn.style.display = '';
       pageSub.textContent = '// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre\'s response below, then generate Stage 2.';
       showStatus('status3', '', '');
-      // Reset Stage 2 output
       document.getElementById('stage2output').innerHTML = '<span class="placeholder">Generate Stage 2 after pasting Sabre response above...</span>';
     }
 
-    // Send Stage 1 command to Zapier
     sendToZapier('stage1_command', {
       command: cmd,
-      origin, destination: dest, date, carrier,
-      flight_number: flightnum || null,
-      cabin,
+      segments: segments.map(s => ({
+        origin: s.origin, destination: s.dest, date: s.date,
+        carrier: s.carrier, flight_number: s.flightnum || null,
+        booking_class: s.bookingClass
+      })),
       direct_sell: isDirectSell
     });
   }
@@ -1307,7 +1348,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const resp = document.getElementById('sabreResponse').value.trim();
     if (!resp) { alert('Paste Sabre availability response first.'); return; }
 
-    const cabin = document.getElementById('f-cabin').value || 'Y';
+    const bookingClass = document.getElementById('f-seg0-class')?.value || 'Y';
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1323,7 +1364,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
           max_tokens: 200,
           messages: [{
             role: 'user',
-            content: `From this Sabre GDS availability response, identify the best line number for cabin class "${cabin}". Return ONLY a JSON like: {"line": "1", "class": "Y"}. No explanation.\n\nSabre response:\n${resp}`
+            content: `From this Sabre GDS availability response, identify the best line number for booking class "${bookingClass}". Return ONLY a JSON like: {"line": "1", "class": "Y"}. No explanation.\n\nSabre response:\n${resp}`
           }]
         })
       });
@@ -1342,12 +1383,9 @@ Return ONLY the JSON. No explanation. No markdown.` });
   }
 
   // GENERATE STAGE 2
-  // skipSell: when true, omit the 0Y1 sell-from-availability line (used for direct sell flow)
+  // skipSell: when true, omit sell-from-availability lines (used for direct sell flow)
   function generateStage2(skipSell) {
-    const origin = document.getElementById('f-origin').value.trim();
-    const dest = document.getElementById('f-dest').value.trim();
-    const cabin = document.getElementById('f-cabin').value.trim() || 'Y';
-    const linenum = document.getElementById('f-linenum').value.trim() || '1';
+    const segcount = parseInt(document.getElementById('f-segcount').value);
     const paxcount = parseInt(document.getElementById('f-paxcount').value);
     const phone = document.getElementById('f-phone').value.trim().replace(/\D/g,'');
     const paxphone = document.getElementById('f-paxphone').value.trim().replace(/\D/g,'');
@@ -1357,14 +1395,15 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const ssr = document.getElementById('f-ssr').value.trim();
     const ff = document.getElementById('f-ff').value.trim();
 
-    // Format email for Sabre (@ becomes //, _ becomes ..)
     const sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
 
     let lines = [];
 
-    // 1. Sell segment (skip if direct sell — Stage 1 already sold the seat)
+    // 1. Sell segments (skip if direct sell — Stage 1 already sold)
     if (!skipSell) {
-      lines.push(`0${cabin}${linenum}`);
+      const linenum = document.getElementById('f-linenum').value.trim() || '1';
+      const bookingClass = document.getElementById('f-seg0-class')?.value.trim() || 'Y';
+      lines.push(`0${bookingClass}${linenum}`);
     }
 
     // 2. Passenger names
@@ -1405,7 +1444,6 @@ Return ONLY the JSON. No explanation. No markdown.` });
     out.textContent = cmd;
     addCopyBtn('stage2output', cmd);
 
-    // Update Stage 2 label
     const stage2Label = document.querySelector('#page3 .card:has(#stage2output) .stage-label span:first-child');
     if (stage2Label) {
       stage2Label.textContent = skipSell
@@ -1413,10 +1451,9 @@ Return ONLY the JSON. No explanation. No markdown.` });
         : 'STAGE 2 — Full PNR Booking Block';
     }
 
-    // Send Stage 2 command to Zapier
     sendToZapier('stage2_command', {
       command: cmd,
-      origin, destination: dest, cabin, line_number: linenum,
+      segment_count: segcount,
       passenger_count: paxcount,
       phone, email,
       ticketing_deadline: tickdate,
@@ -1443,21 +1480,29 @@ Return ONLY the JSON. No explanation. No markdown.` });
   // PNR LOG
   function logPNR() {
     const pnr = document.getElementById('f-pnr').value.trim();
-    const origin = document.getElementById('f-origin').value;
-    const dest = document.getElementById('f-dest').value;
-    const date = document.getElementById('f-date').value;
-    const count = parseInt(document.getElementById('f-paxcount').value);
+    const segcount = parseInt(document.getElementById('f-segcount').value);
+    const paxcount = parseInt(document.getElementById('f-paxcount').value);
     const last = document.getElementById('f-last0')?.value || '';
     const now = new Date().toISOString().split('T')[0];
 
-    const log = `${now}\t${pnr}\t${origin}\t${dest}\t${date}\t${last}\t${count} PAX`;
+    // Build route string from all segments
+    let route = '';
+    for (let i = 0; i < segcount; i++) {
+      const origin = document.getElementById(`f-seg${i}-origin`)?.value || '';
+      const dest = document.getElementById(`f-seg${i}-dest`)?.value || '';
+      if (i === 0) route = `${origin}-${dest}`;
+      else route += `-${dest}`;
+    }
+    const date = document.getElementById('f-seg0-date')?.value || '';
+
+    const log = `${now}\t${pnr}\t${route}\t${date}\t${last}\t${paxcount} PAX\t${segcount} SEG`;
     navigator.clipboard.writeText(log);
 
-    // Send PNR confirmation to Zapier
     sendToZapier('pnr_confirmed', {
-      pnr, origin, destination: dest, date,
+      pnr, route, date,
       passenger_name: last,
-      passenger_count: count,
+      passenger_count: paxcount,
+      segment_count: segcount,
       booked_date: now
     });
 

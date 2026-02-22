@@ -984,6 +984,14 @@ CRITICAL RULES:
 - For airline app screenshots: the city/airport shown at the TOP or LEFT of an arrow/line is typically the ORIGIN (departure), and the one at the BOTTOM or RIGHT is the DESTINATION (arrival).
 - If a screenshot shows a flight detail page, that IS the flight the user wants — extract it.
 
+MULTI-IMAGE CORRELATION:
+- If you see BOTH a trip summary AND individual flight detail pages, CROSS-REFERENCE them:
+  1. The trip summary shows the CORRECT order: the DEPART segment is always first (index 0), the RETURN segment is always second (index 1).
+  2. Match each flight detail page to its corresponding segment in the trip summary using times, routes, and cabin class.
+  3. Flight detail pages provide the flight number, booking code, and carrier that the trip summary may be missing.
+  4. The trip summary provides the travel DATES that detail pages may be missing.
+- The "flights" array in your response MUST be ordered: outbound/depart first, return second. Use dates to determine order (earlier date = outbound).
+
 Return ONLY a valid JSON object. For each field include "source" ("img_1", "img_2", "img_3", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
 
 Example structure (use actual values from the images, NOT these placeholders):
@@ -1033,6 +1041,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
         body: JSON.stringify({
           model: 'claude-opus-4-6',
           max_tokens: 1500,
+          temperature: 0,
           messages: [{ role: 'user', content }]
         })
       });
@@ -1046,7 +1055,9 @@ Return ONLY the JSON. No explanation. No markdown.` });
       let raw = data.content[0].text.trim();
       // Strip markdown if present
       raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      console.log('[PARSE DEBUG] Raw AI response:', raw);
       const parsed = JSON.parse(raw);
+      console.log('[PARSE DEBUG] Parsed flights:', JSON.stringify(parsed.flights, null, 2));
       state.parsedData = parsed;
 
       populatePage2(parsed);

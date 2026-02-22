@@ -521,6 +521,21 @@ async function parseInputs() {
 // ==========================================
 // API CALLS
 // ==========================================
+var SYSTEM_MSG = 'You are a JSON extraction API. You MUST respond with ONLY a valid JSON object. No text before or after the JSON. No explanations. No markdown. Start your response with { and end with }.';
+
+function extractJSON(raw) {
+  // Try direct parse first
+  raw = raw.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  try { return JSON.parse(raw); } catch(e) {}
+  // Find first { and last } in the response
+  var start = raw.indexOf('{');
+  var end = raw.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    try { return JSON.parse(raw.substring(start, end + 1)); } catch(e) {}
+  }
+  throw new Error('Could not find valid JSON in API response. Raw: ' + raw.substring(0, 200));
+}
+
 async function extractFromImage(key, dataURL, mtype, label) {
   var base64 = dataURL.split(',')[1];
   var prompt = 'Extract ALL travel booking data from this image (' + label + ').\n\n'
@@ -530,12 +545,11 @@ async function extractFromImage(key, dataURL, mtype, label) {
     + 'passenger names, phone, email.\n\n'
     + 'For airline apps: city at TOP/LEFT of arrow = ORIGIN, BOTTOM/RIGHT = DESTINATION.\n'
     + 'Round trips have 2 segments — include BOTH.\n\n'
-    + 'Return ONLY valid JSON:\n'
+    + 'Respond with ONLY this JSON structure (replace values with actual data, use null for missing):\n'
     + '{"image_type":"flight_detail","flights":[{"origin":"JFK","destination":"LHR","date":"16MAR",'
     + '"flight_number":"142","carrier":"AA","booking_class":"O","departure_time":"19:30",'
     + '"arrival_time":"07:45","cabin":"business"}],"passengers":[{"last":"SMITH","first":"JOHN",'
-    + '"title":"MR"}],"phone":null,"email":null,"frequent_flyer":null}\n\n'
-    + 'Use JSON null for missing fields. Replace examples with ACTUAL data. JSON only, no explanation.';
+    + '"title":"MR"}],"phone":null,"email":null,"frequent_flyer":null}';
 
   var res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -549,6 +563,7 @@ async function extractFromImage(key, dataURL, mtype, label) {
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       temperature: 0,
+      system: SYSTEM_MSG,
       messages: [{ role: 'user', content: [
         { type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } },
         { type: 'text', text: prompt }
@@ -562,8 +577,8 @@ async function extractFromImage(key, dataURL, mtype, label) {
   }
 
   var data = await res.json();
-  var raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(raw);
+  var raw = data.content[0].text;
+  return extractJSON(raw);
 }
 
 async function extractFromText(key, text) {
@@ -579,13 +594,14 @@ async function extractFromText(key, text) {
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       temperature: 0,
-      messages: [{ role: 'user', content: 'Extract travel booking data from this text. Return ONLY JSON: {"image_type":"text","flights":[{"origin":"XXX","destination":"YYY","date":"DDMON","flight_number":"000","carrier":"XX","booking_class":"X","departure_time":null,"arrival_time":null,"cabin":null}],"passengers":[{"last":null,"first":null,"title":null}],"phone":null,"email":null,"frequent_flyer":null}. Use null for missing. JSON only.\n\nText:\n' + text }]
+      system: SYSTEM_MSG,
+      messages: [{ role: 'user', content: 'Extract travel booking data from this text. Respond with ONLY this JSON (replace values, use null for missing): {"image_type":"text","flights":[{"origin":"XXX","destination":"YYY","date":"DDMON","flight_number":"000","carrier":"XX","booking_class":"X","departure_time":null,"arrival_time":null,"cabin":null}],"passengers":[{"last":null,"first":null,"title":null}],"phone":null,"email":null,"frequent_flyer":null}\n\nText:\n' + text }]
     })
   });
   if (!res.ok) throw new Error('Text parse failed');
   var data = await res.json();
-  var raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(raw);
+  var raw = data.content[0].text;
+  return extractJSON(raw);
 }
 
 // ==========================================

@@ -1091,12 +1091,12 @@ No explanation. No markdown. JSON only.` }
   function combineImageResults(results) {
     console.log('[COMBINE] Input results:', JSON.stringify(results, null, 2));
 
-    let tripSummary = null;
-    const flightDetails = [];
     const passengers = [];
     let phone = null, email = null, frequentFlyer = null;
 
-    // Step 1: Categorize each image result
+    // Gather ALL flights from ALL images, tagged with source
+    const allFlights = [];
+
     results.forEach((r, i) => {
       const src = `img_${i + 1}`;
 
@@ -1112,97 +1112,70 @@ No explanation. No markdown. JSON only.` }
       if (r.email && !email) email = { value: r.email, source: src };
       if (r.frequent_flyer && !frequentFlyer) frequentFlyer = { value: r.frequent_flyer, source: src };
 
-      // Categorize by image type
-      if (r.image_type === 'trip_summary') {
-        tripSummary = { ...r, source: src };
-      } else if (r.image_type === 'flight_detail' || r.image_type === 'booking_confirmation') {
-        if (r.flights) {
-          r.flights.forEach(f => flightDetails.push({ ...f, source: src }));
-        }
-      } else if (r.flights && r.flights.length > 0) {
-        // Any other type with flights
+      // Collect ALL flights from every image
+      if (r.flights && r.flights.length > 0) {
         r.flights.forEach(f => {
-          if (f.flight_number || f.origin) flightDetails.push({ ...f, source: src });
+          allFlights.push({
+            ...f,
+            source: src,
+            imageType: r.image_type || 'unknown'
+          });
         });
       }
     });
 
-    console.log('[COMBINE] Trip summary:', tripSummary ? 'found' : 'none');
-    console.log('[COMBINE] Flight details:', flightDetails.length);
+    console.log('[COMBINE] All flights collected:', allFlights.length, allFlights);
     console.log('[COMBINE] Passengers:', passengers.length);
 
-    // Step 2: Build flight segments
-    let flights = [];
+    // Now merge flights that represent the SAME segment (same route)
+    // Two flights match if they share the same origin+destination
+    const merged = [];
+    const used = new Set();
 
-    if (tripSummary && tripSummary.flights && tripSummary.flights.length > 0) {
-      // Use trip summary as the skeleton — it defines the segment count and order
-      flights = tripSummary.flights.map((ts, i) => {
-        const seg = {
-          origin: { value: ts.origin, source: tripSummary.source, confidence: ts.origin ? 'high' : 'low' },
-          destination: { value: ts.destination, source: tripSummary.source, confidence: ts.destination ? 'high' : 'low' },
-          date: { value: ts.date, source: tripSummary.source, confidence: ts.date ? 'high' : 'low' },
-          flight_number: { value: ts.flight_number || null, source: tripSummary.source, confidence: ts.flight_number ? 'high' : 'low' },
-          carrier: { value: ts.carrier || null, source: tripSummary.source, confidence: ts.carrier ? 'high' : 'low' },
-          booking_class: { value: ts.booking_class || null, source: tripSummary.source, confidence: ts.booking_class ? 'high' : 'low' }
-        };
+    for (let i = 0; i < allFlights.length; i++) {
+      if (used.has(i)) continue;
+      const base = { ...allFlights[i] };
 
-        // Try to match a flight detail page to this trip segment by route or times
-        const match = flightDetails.find(fd => {
-          // Match by origin+destination
-          if (fd.origin && ts.origin && fd.destination && ts.destination) {
-            return fd.origin === ts.origin && fd.destination === ts.destination;
-          }
-          // Match by departure time
-          if (fd.departure_time && ts.departure_time) {
-            return fd.departure_time === ts.departure_time;
-          }
-          return false;
-        });
+      // Try to find another flight with the same route to merge with
+      for (let j = i + 1; j < allFlights.length; j++) {
+        if (used.has(j)) continue;
+        const other = allFlights[j];
 
-        if (match) {
-          // Fill in missing fields from the detail page
-          if (match.flight_number) { seg.flight_number = { value: match.flight_number, source: match.source, confidence: 'high' }; }
-          if (match.carrier) { seg.carrier = { value: match.carrier, source: match.source, confidence: 'high' }; }
-          if (match.booking_class) { seg.booking_class = { value: match.booking_class, source: match.source, confidence: 'high' }; }
-          if (match.origin && !seg.origin.value) { seg.origin = { value: match.origin, source: match.source, confidence: 'high' }; }
-          if (match.destination && !seg.destination.value) { seg.destination = { value: match.destination, source: match.source, confidence: 'high' }; }
-          if (match.date && !seg.date.value) { seg.date = { value: match.date, source: match.source, confidence: 'high' }; }
-          // Remove matched detail so it's not reused
-          const idx = flightDetails.indexOf(match);
-          if (idx > -1) flightDetails.splice(idx, 1);
+        // Check if same route
+        const sameRoute = base.origin && other.origin && base.destination && other.destination &&
+          base.origin === other.origin && base.destination === other.destination;
+
+        if (sameRoute) {
+          console.log(`[COMBINE] Merging flight ${i} (${base.source}) with ${j} (${other.source})`);
+          // Merge: prefer non-null values, prefer flight_detail source for flight-specific data
+          if (!base.flight_number && other.flight_number) { base.flight_number = other.flight_number; base._fn_src = other.source; }
+          if (!base.carrier && other.carrier) { base.carrier = other.carrier; base._ca_src = other.source; }
+          if (!base.booking_class && other.booking_class) { base.booking_class = other.booking_class; base._bc_src = other.source; }
+          if (!base.date && other.date) { base.date = other.date; base._dt_src = other.source; }
+          if (!base.departure_time && other.departure_time) base.departure_time = other.departure_time;
+          if (!base.arrival_time && other.arrival_time) base.arrival_time = other.arrival_time;
+          if (!base.cabin && other.cabin) base.cabin = other.cabin;
+          used.add(j);
         }
+      }
 
-        return seg;
-      });
+      merged.push(base);
+      used.add(i);
     }
 
-    // If no trip summary, use flight detail pages directly as segments
-    if (flights.length === 0 && flightDetails.length > 0) {
-      flights = flightDetails.map(fd => ({
-        origin: { value: fd.origin || null, source: fd.source, confidence: fd.origin ? 'high' : 'low' },
-        destination: { value: fd.destination || null, source: fd.source, confidence: fd.destination ? 'high' : 'low' },
-        date: { value: fd.date || null, source: fd.source, confidence: fd.date ? 'high' : 'low' },
-        flight_number: { value: fd.flight_number || null, source: fd.source, confidence: fd.flight_number ? 'high' : 'low' },
-        carrier: { value: fd.carrier || null, source: fd.source, confidence: fd.carrier ? 'high' : 'low' },
-        booking_class: { value: fd.booking_class || null, source: fd.source, confidence: fd.booking_class ? 'high' : 'low' }
-      }));
-    }
+    console.log('[COMBINE] After merge:', merged.length, 'segments');
 
-    // Any unmatched flight details — append as extra segments
-    if (flightDetails.length > 0 && tripSummary) {
-      flightDetails.forEach(fd => {
-        flights.push({
-          origin: { value: fd.origin || null, source: fd.source, confidence: fd.origin ? 'high' : 'low' },
-          destination: { value: fd.destination || null, source: fd.source, confidence: fd.destination ? 'high' : 'low' },
-          date: { value: fd.date || null, source: fd.source, confidence: fd.date ? 'high' : 'low' },
-          flight_number: { value: fd.flight_number || null, source: fd.source, confidence: fd.flight_number ? 'high' : 'low' },
-          carrier: { value: fd.carrier || null, source: fd.source, confidence: fd.carrier ? 'high' : 'low' },
-          booking_class: { value: fd.booking_class || null, source: fd.source, confidence: fd.booking_class ? 'high' : 'low' }
-        });
-      });
-    }
+    // Build final flights array with {value, source, confidence} structure
+    const flights = merged.map(f => ({
+      origin: { value: f.origin || null, source: f.source, confidence: f.origin ? 'high' : 'low' },
+      destination: { value: f.destination || null, source: f.source, confidence: f.destination ? 'high' : 'low' },
+      date: { value: f.date || null, source: f._dt_src || f.source, confidence: f.date ? 'high' : 'low' },
+      flight_number: { value: f.flight_number || null, source: f._fn_src || f.source, confidence: f.flight_number ? 'high' : 'low' },
+      carrier: { value: f.carrier || null, source: f._ca_src || f.source, confidence: f.carrier ? 'high' : 'low' },
+      booking_class: { value: f.booking_class || null, source: f._bc_src || f.source, confidence: f.booking_class ? 'high' : 'low' }
+    )));
 
-    // Step 3: Sort by date (outbound first)
+    // Sort by date (outbound first)
     const monthOrder = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
     flights.sort((a, b) => {
       const da = a.date?.value, db = b.date?.value;

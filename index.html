@@ -560,6 +560,82 @@
     margin-bottom: 1rem;
   }
 
+  /* Extraction summary panel */
+  .extract-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .extract-card {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .extract-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0,212,255,0.1);
+  }
+  .extract-card-header .img-label {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.8rem;
+  }
+  .extract-card-header .img-type {
+    background: rgba(0,212,255,0.15);
+    color: var(--accent);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .extract-card-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .extract-data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    color: var(--text);
+  }
+  .extract-data-row .lbl { color: var(--muted); }
+  .extract-data-row .val { color: var(--green); font-weight: 600; }
+  .extract-data-row .val.null-val { color: var(--muted); font-style: italic; }
+  .extract-seg-divider {
+    border-top: 1px dashed rgba(255,255,255,0.08);
+    margin: 0.35rem 0;
+    font-size: 0.68rem;
+    color: var(--accent2);
+    padding-top: 0.25rem;
+    font-weight: 700;
+  }
+  .src-tag {
+    display: inline-block;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    margin-left: 0.35rem;
+    vertical-align: middle;
+  }
+  .src-tag.img { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .src-tag.txt { background: rgba(255,107,53,0.15); color: var(--accent2); }
+  .src-tag.combined { background: rgba(0,255,136,0.12); color: var(--green); }
+
   .stage-label {
     display: flex;
     align-items: center;
@@ -606,7 +682,7 @@
 
 <!-- PAGE 1: Input -->
 <div class="page active" id="page1">
-  <div class="page-title">Upload Flight Details</div>
+  <div class="page-title">Upload Flight Details <span style="font-size:0.55em; color:var(--muted); font-weight:400;">v5</span></div>
   <div class="page-sub">// Step 01 — Provide itinerary via image or text. AI will parse all fields.</div>
 
   <div class="card">
@@ -617,8 +693,17 @@
         <input type="text" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
       </div>
     </div>
-    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono);">
+    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono); margin-bottom:1.25rem;">
       ⚠ Key is never stored or transmitted anywhere except directly to Anthropic API from your browser.
+    </div>
+    <div class="api-key-row">
+      <div>
+        <label>Zapier Webhook URL <span style="color:var(--muted)">(optional — auto-logs bookings)</span></label>
+        <input type="text" id="zapierUrl" placeholder="https://hooks.zapier.com/hooks/catch/..." autocomplete="off">
+      </div>
+    </div>
+    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono);">
+      🔗 Connect to Google Sheets, Slack, email, or any Zapier app. Data is sent at each stage: parse, commands, and PNR confirmation.
     </div>
   </div>
 
@@ -653,77 +738,39 @@
 <!-- PAGE 2: Booking Form -->
 <div class="page" id="page2">
   <div class="page-title">Review & Complete Booking</div>
-  <div class="page-sub">// Step 02 — Verify parsed fields. Required fields highlighted in red.</div>
+  <div class="page-sub">// Step 02 — Data extracted from each image, then combined. Verify and edit below.</div>
 
   <div class="note-box" id="confidenceNote" style="display:none"></div>
 
   <div id="status2"></div>
 
-  <!-- FLIGHT DETAILS -->
+  <!-- EXTRACTION SUMMARY — what was found in each image -->
   <div class="card">
-    <div class="card-title">✈ Flight Details</div>
-    <div class="form-grid">
-      <div>
-        <div class="field-row">
-          <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-origin"></span>
-          <span class="confidence-dot" id="conf-origin"></span>
-          <button class="quickview-btn" id="qv-origin" onclick="quickview('origin')" style="display:none">👁</button>
-        </div>
-        <input type="text" id="f-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-dest"></span>
-          <span class="confidence-dot" id="conf-dest"></span>
-          <button class="quickview-btn" id="qv-dest" onclick="quickview('dest')" style="display:none">👁</button>
-        </div>
-        <input type="text" id="f-dest" placeholder="LAX" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Travel Date<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-date"></span>
-          <span class="confidence-dot" id="conf-date"></span>
-        </div>
-        <input type="text" id="f-date" placeholder="15MAR" oninput="validateRequired()">
-      </div>
-      <div>
-        <div class="field-row">
-          <label>Flight Number</label>
-          <span class="source-badge manual" id="src-flightnum"></span>
-        </div>
-        <input type="text" id="f-flightnum" placeholder="AA100">
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Cabin Class<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-cabin"></span>
-        </div>
-        <select id="f-cabin" onchange="validateRequired()">
-          <option value="">Select cabin...</option>
-          <option value="Y">Y — Economy</option>
-          <option value="C">C — Business</option>
-          <option value="F">F — First</option>
-          <option value="W">W — Premium Economy</option>
-          <option value="B">B — Economy (discounted)</option>
-          <option value="K">K — Economy (discounted)</option>
-        </select>
-      </div>
-      <div>
-        <div class="field-row">
-          <label class="required-label">Airline Code<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-carrier"></span>
-        </div>
-        <input type="text" id="f-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-      </div>
+    <div class="card-title">Extracted Data Per Image</div>
+    <div class="page-sub" style="margin-bottom:0.75rem">Each card shows what was read from that specific image. Combined result fills the form below.</div>
+    <div class="extract-summary" id="extractionSummary">
+      <div style="color:var(--muted); font-size:0.8rem;">No extraction data yet.</div>
     </div>
   </div>
 
+  <!-- COMBINED FLIGHT SEGMENTS -->
+  <div class="card">
+    <div class="card-title">Combined Flight Segments</div>
+    <div>
+      <label>Number of Segments</label>
+      <select id="f-segcount" onchange="renderSegmentFields()">
+        <option value="1">1 — One Way</option>
+        <option value="2" selected>2 — Round Trip</option>
+        <option value="3">3 — Multi-City</option>
+        <option value="4">4 — Multi-City</option>
+      </select>
+    </div>
+  </div>
+  <div id="segmentFields"></div>
+
   <!-- PASSENGERS -->
   <div class="card">
-    <div class="card-title">👤 Passengers</div>
+    <div class="card-title">Passengers</div>
     <div>
       <label>Number of Passengers</label>
       <select id="f-paxcount" onchange="updatePaxFields()">
@@ -738,7 +785,7 @@
 
   <!-- CONTACT -->
   <div class="card">
-    <div class="card-title">📞 Contact Details</div>
+    <div class="card-title">Contact Details</div>
     <div class="form-grid">
       <div>
         <div class="field-row">
@@ -766,7 +813,7 @@
 
   <!-- BOOKING ADMIN -->
   <div class="card">
-    <div class="card-title">🗓 Booking Administration</div>
+    <div class="card-title">Booking Administration</div>
     <div class="form-grid">
       <div>
         <div class="field-row">
@@ -791,23 +838,35 @@
     </div>
   </div>
 
+  <!-- DEBUG PANEL -->
+  <div class="card" style="border-color: rgba(255,107,53,0.3);">
+    <div class="card-title" style="color:var(--accent2); cursor:pointer;" onclick="document.getElementById('debugContent').style.display = document.getElementById('debugContent').style.display === 'none' ? 'block' : 'none'">
+      Debug: Raw Extraction Data (click to toggle)
+    </div>
+    <div id="debugContent" style="display:none;">
+      <pre id="debugOutput" style="background:#050a14; border:1px solid var(--border); border-radius:6px; padding:0.75rem; font-size:0.7rem; color:var(--green); overflow-x:auto; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></pre>
+    </div>
+  </div>
+
   <div class="actions-row">
-    <button class="btn btn-secondary" onclick="goBack()">← Back</button>
-    <button class="btn btn-primary" onclick="generateStage1()">Generate Stage 1 Command</button>
+    <button class="btn btn-secondary" onclick="goBack()">Back</button>
+    <button class="btn btn-primary" onclick="generateCommands()">Generate Sabre Commands</button>
   </div>
 </div>
 
 <!-- PAGE 3: Sabre Commands -->
 <div class="page" id="page3">
   <div class="page-title">Sabre Command Output</div>
-  <div class="page-sub">// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre's response below, then generate Stage 2.</div>
+  <div class="page-sub" id="page3sub">// Step 03 — Both commands generated. Review, copy, and paste into Sabre.</div>
+
+  <div class="note-box" id="commandWarnings" style="display:none; color:var(--yellow);"></div>
 
   <div id="status3"></div>
 
-  <!-- STAGE 1 -->
+  <!-- STAGE 1: SELL / AVAILABILITY -->
   <div class="card">
     <div class="stage-label">
-      <span style="color:var(--accent)">STAGE 1 — Availability Check</span>
+      <span style="color:var(--accent)">STAGE 1 — Sell / Availability</span>
       <span style="color:var(--muted)">Paste into Sabre terminal first</span>
     </div>
     <div class="sabre-output" id="stage1output">
@@ -815,40 +874,36 @@
     </div>
   </div>
 
-  <!-- SABRE RESPONSE INPUT -->
-  <div class="card">
-    <div class="card-title">📥 Paste Sabre Availability Response</div>
+  <!-- OPTIONAL: SABRE RESPONSE INPUT (only shown if availability check needed) -->
+  <div class="card" id="availResponseCard" style="display:none;">
+    <div class="card-title">Paste Sabre Availability Response (optional)</div>
     <div style="font-size:0.78rem; color:var(--muted); margin-bottom:0.75rem; font-family:var(--font-mono)">
-      After running Stage 1 in Sabre, paste the full terminal response here. AI will identify the correct line number and class.
+      If you ran an availability check, paste the response here to auto-detect the line number.
     </div>
-    <textarea id="sabreResponse" placeholder="Paste Sabre availability response here...
-Example:
-1  AA  100 Y  15MAR  JFKLAX  SS  0900  1230
-2  AA  102 B  15MAR  JFKLAX  SS  1100  1430
-..." style="min-height:100px"></textarea>
+    <textarea id="sabreResponse" placeholder="Paste Sabre availability response here..." style="min-height:80px"></textarea>
     <div class="avail-input-row" style="margin-top:0.75rem">
       <div>
-        <label>Line # to book (auto-filled if you paste response above)</label>
+        <label>Line # to book</label>
         <input type="text" id="f-linenum" placeholder="1">
       </div>
       <button class="btn btn-secondary" onclick="parseAvailResponse()" style="white-space:nowrap">Parse Response</button>
     </div>
   </div>
 
-  <!-- STAGE 2 -->
+  <!-- STAGE 2: FULL PNR BLOCK -->
   <div class="card">
     <div class="stage-label">
       <span style="color:var(--accent2)">STAGE 2 — Full PNR Booking Block</span>
-      <span style="color:var(--muted)">Paste after Stage 1 confirmed</span>
+      <span style="color:var(--muted)">Paste after sells confirmed</span>
     </div>
     <div class="sabre-output" id="stage2output">
-      <span class="placeholder">Generate Stage 2 after pasting Sabre response above...</span>
+      <span class="placeholder">Command will appear here...</span>
     </div>
   </div>
 
   <div class="actions-row">
-    <button class="btn btn-secondary" onclick="goToPage(2)">← Edit Form</button>
-    <button class="btn btn-orange" onclick="generateStage2()">⚡ Generate Stage 2 Command</button>
+    <button class="btn btn-secondary" onclick="goToPage(2)">Edit Form</button>
+    <button class="btn btn-primary" onclick="generateCommands()">Regenerate Commands</button>
   </div>
 
   <!-- PNR CAPTURE -->
@@ -881,12 +936,33 @@ Example:
   // STATE
   const state = {
     apiKey: '',
+    zapierUrl: '',
     uploadedFiles: [],
     uploadedDataURLs: [],
     parsedData: {},
     sourceMap: {},
     confidenceMap: {}
   };
+
+  // ZAPIER INTEGRATION
+  async function sendToZapier(event, data) {
+    const url = state.zapierUrl;
+    if (!url) return;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify({
+          event,
+          timestamp: new Date().toISOString(),
+          ...data
+        })
+      });
+    } catch(e) {
+      console.warn('Zapier webhook failed:', e.message);
+    }
+  }
 
   // FILE UPLOAD
   const fileInput = document.getElementById('fileInput');
@@ -921,11 +997,22 @@ Example:
       const chip = document.createElement('div');
       chip.className = 'file-chip';
       const isImg = file.type.startsWith('image/');
-      chip.innerHTML = `
-        ${isImg ? `<img src="${state.uploadedDataURLs[i]}" class="thumb">` : '📄'}
-        <span>${file.name}</span>
-        <span class="remove" onclick="removeFile(${i})">✕</span>
-      `;
+      if (isImg) {
+        const thumb = document.createElement('img');
+        thumb.src = state.uploadedDataURLs[i];
+        thumb.className = 'thumb';
+        chip.appendChild(thumb);
+      } else {
+        chip.appendChild(document.createTextNode('📄 '));
+      }
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = file.name;
+      chip.appendChild(nameSpan);
+      const removeSpan = document.createElement('span');
+      removeSpan.className = 'remove';
+      removeSpan.textContent = '✕';
+      removeSpan.onclick = () => removeFile(i);
+      chip.appendChild(removeSpan);
       container.appendChild(chip);
     });
   }
@@ -934,6 +1021,217 @@ Example:
     state.uploadedFiles.splice(i, 1);
     state.uploadedDataURLs.splice(i, 1);
     renderFilePreviews();
+  }
+
+  // EXTRACT DATA FROM A SINGLE IMAGE
+  async function extractFromImage(apiKey, base64, mtype, imgLabel) {
+    const content = [
+      {
+        type: 'image',
+        source: { type: 'base64', media_type: mtype, data: base64 }
+      },
+      { type: 'text', text: `Extract ALL travel booking data visible in this single image (${imgLabel}).
+
+Identify the image type and extract accordingly:
+- PASSPORT / ID CARD: passenger last name, first name, title.
+- FLIGHT DETAIL PAGE (airline app/website): flight number (numeric only, e.g. "142"), carrier (2-letter IATA code, e.g. "AA"), origin airport (3-letter IATA code), destination airport (3-letter IATA code), departure time, arrival time, cabin class, booking code letter (O, R, B, K, J, Y, etc.), date if shown.
+- TRIP SUMMARY / ITINERARY: for EACH segment shown: origin city/airport, destination city/airport, date (DDMON format like 16MAR), departure time, arrival time. A round trip has 2 segments — include BOTH.
+- BOOKING CONFIRMATION: all flight details plus passenger names, contact info.
+- EMAIL / TEXT: phone, email, special requests, or any of the above.
+
+For airline app screenshots: the city at the TOP or LEFT of an arrow = ORIGIN (departure), city at BOTTOM or RIGHT = DESTINATION (arrival).
+
+IMPORTANT: Use JSON null (not the string "null") for any field not visible in the image. If the image shows a round trip with 2 segments, include 2 entries in the flights array. Always use 3-letter IATA airport codes for origin/destination when visible.
+
+Return ONLY valid JSON:
+{
+  "image_type": "flight_detail",
+  "flights": [
+    {
+      "origin": "JFK",
+      "destination": "LHR",
+      "date": "16MAR",
+      "flight_number": "142",
+      "carrier": "AA",
+      "booking_class": "O",
+      "departure_time": "19:30",
+      "arrival_time": "07:45",
+      "cabin": "business"
+    }
+  ],
+  "passengers": [{"last": "SMITH", "first": "JOHN", "title": "MR"}],
+  "phone": null,
+  "email": null,
+  "frequent_flyer": null
+}
+
+Replace the example values with ACTUAL data from the image. Use JSON null for missing fields.
+No explanation. No markdown. JSON only.` }
+    ];
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        temperature: 0,
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `API error for ${imgLabel}`);
+    }
+
+    const data = await res.json();
+    let raw = data.content[0].text.trim();
+    raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    console.log(`[PARSE] ${imgLabel} raw:`, raw);
+    return JSON.parse(raw);
+  }
+
+  // Clean "null" strings and other junk from extraction results
+  function cleanExtraction(obj) {
+    if (obj === null || obj === undefined) return null;
+    if (typeof obj === 'string') {
+      const s = obj.trim();
+      if (s === 'null' || s === 'N/A' || s === 'n/a' || s === 'none' || s === 'unknown' || s === '') return null;
+      return s;
+    }
+    if (Array.isArray(obj)) return obj.map(cleanExtraction);
+    if (typeof obj === 'object') {
+      const out = {};
+      for (const [k, v] of Object.entries(obj)) {
+        out[k] = cleanExtraction(v);
+      }
+      return out;
+    }
+    return obj;
+  }
+
+  // COMBINE PER-IMAGE RESULTS INTO FINAL DATA
+  function combineImageResults(results) {
+    // Clean all "null" strings first
+    results = results.map(cleanExtraction);
+    console.log('[COMBINE] Cleaned results:', JSON.stringify(results, null, 2));
+
+    const passengers = [];
+    let phone = null, email = null, frequentFlyer = null;
+
+    // Gather ALL flights from ALL images, tagged with source
+    const allFlights = [];
+
+    results.forEach((r, i) => {
+      const src = `img_${i + 1}`;
+
+      // Collect passengers from any image
+      if (r.passengers) {
+        r.passengers.forEach(p => {
+          if (p.last || p.first) passengers.push({ ...p, source: src });
+        });
+      }
+
+      // Collect contact info from any image
+      if (r.phone && !phone) phone = { value: r.phone, source: src };
+      if (r.email && !email) email = { value: r.email, source: src };
+      if (r.frequent_flyer && !frequentFlyer) frequentFlyer = { value: r.frequent_flyer, source: src };
+
+      // Collect ALL flights from every image
+      if (r.flights && r.flights.length > 0) {
+        r.flights.forEach(f => {
+          allFlights.push({
+            ...f,
+            source: src,
+            imageType: r.image_type || 'unknown'
+          });
+        });
+      }
+    });
+
+    console.log('[COMBINE] All flights collected:', allFlights.length, allFlights);
+    console.log('[COMBINE] Passengers:', passengers.length);
+
+    // Now merge flights that represent the SAME segment (same route)
+    // Two flights match if they share the same origin+destination
+    const merged = [];
+    const used = new Set();
+
+    for (let i = 0; i < allFlights.length; i++) {
+      if (used.has(i)) continue;
+      const base = { ...allFlights[i] };
+
+      // Try to find another flight with the same route to merge with
+      for (let j = i + 1; j < allFlights.length; j++) {
+        if (used.has(j)) continue;
+        const other = allFlights[j];
+
+        // Check if same route
+        const sameRoute = base.origin && other.origin && base.destination && other.destination &&
+          base.origin === other.origin && base.destination === other.destination;
+
+        if (sameRoute) {
+          console.log(`[COMBINE] Merging flight ${i} (${base.source}) with ${j} (${other.source})`);
+          // Merge: prefer non-null values, prefer flight_detail source for flight-specific data
+          if (!base.flight_number && other.flight_number) { base.flight_number = other.flight_number; base._fn_src = other.source; }
+          if (!base.carrier && other.carrier) { base.carrier = other.carrier; base._ca_src = other.source; }
+          if (!base.booking_class && other.booking_class) { base.booking_class = other.booking_class; base._bc_src = other.source; }
+          if (!base.date && other.date) { base.date = other.date; base._dt_src = other.source; }
+          if (!base.departure_time && other.departure_time) base.departure_time = other.departure_time;
+          if (!base.arrival_time && other.arrival_time) base.arrival_time = other.arrival_time;
+          if (!base.cabin && other.cabin) base.cabin = other.cabin;
+          used.add(j);
+        }
+      }
+
+      merged.push(base);
+      used.add(i);
+    }
+
+    console.log('[COMBINE] After merge:', merged.length, 'segments');
+
+    // Build final flights array with {value, source, confidence} structure
+    const flights = merged.map(f => ({
+      origin: { value: f.origin || null, source: f.source, confidence: f.origin ? 'high' : 'low' },
+      destination: { value: f.destination || null, source: f.source, confidence: f.destination ? 'high' : 'low' },
+      date: { value: f.date || null, source: f._dt_src || f.source, confidence: f.date ? 'high' : 'low' },
+      flight_number: { value: f.flight_number || null, source: f._fn_src || f.source, confidence: f.flight_number ? 'high' : 'low' },
+      carrier: { value: f.carrier || null, source: f._ca_src || f.source, confidence: f.carrier ? 'high' : 'low' },
+      booking_class: { value: f.booking_class || null, source: f._bc_src || f.source, confidence: f.booking_class ? 'high' : 'low' }
+    )));
+
+    // Sort by date (outbound first)
+    const monthOrder = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+    flights.sort((a, b) => {
+      const da = a.date?.value, db = b.date?.value;
+      if (!da || !db) return 0;
+      const dayA = parseInt(da.slice(0, 2)), monA = monthOrder[da.slice(2)] || 0;
+      const dayB = parseInt(db.slice(0, 2)), monB = monthOrder[db.slice(2)] || 0;
+      return (monA * 100 + dayA) - (monB * 100 + dayB);
+    });
+
+    // Build final result
+    const combined = {
+      flights,
+      passengers: passengers.map(p => ({
+        last: { value: p.last ? p.last.toUpperCase() : null, source: p.source, confidence: p.last ? 'high' : 'low' },
+        first: { value: p.first ? p.first.toUpperCase() : null, source: p.source, confidence: p.first ? 'high' : 'low' },
+        title: { value: p.title ? p.title.toUpperCase() : null, source: p.source, confidence: p.title ? 'medium' : 'low' }
+      })),
+      phone: phone ? { value: phone.value, source: phone.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' },
+      pax_phone: { value: null, source: 'unknown', confidence: 'low' },
+      email: email ? { value: email.value, source: email.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' },
+      frequent_flyer: frequentFlyer ? { value: frequentFlyer.value, source: frequentFlyer.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' }
+    };
+
+    console.log('[COMBINE] Final result:', JSON.stringify(combined, null, 2));
+    return combined;
   }
 
   // PARSE INPUTS
@@ -948,84 +1246,75 @@ Example:
     }
 
     state.apiKey = apiKey;
-    showStatus('status1', 'loading', 'Parsing flight details with Claude AI...');
+    state.zapierUrl = document.getElementById('zapierUrl').value.trim();
+    const totalImages = state.uploadedDataURLs.length;
+    showStatus('status1', 'loading', `Parsing ${totalImages} image(s) — extracting data from each...`);
     document.getElementById('parseBtn').disabled = true;
 
     try {
-      const content = [];
-
-      // Add images
-      state.uploadedDataURLs.forEach((dataURL, i) => {
+      // Step 1: Extract from each image in parallel
+      const imagePromises = state.uploadedDataURLs.map((dataURL, i) => {
         const base64 = dataURL.split(',')[1];
         const mtype = state.uploadedFiles[i].type || 'image/jpeg';
-        content.push({
-          type: 'image',
-          source: { type: 'base64', media_type: mtype, data: base64 }
-        });
-        content.push({ type: 'text', text: `The above is image file: img_${i+1} (${state.uploadedFiles[i].name})` });
+        const label = `img_${i + 1} (${state.uploadedFiles[i].name})`;
+        return extractFromImage(apiKey, base64, mtype, label);
       });
 
-      // Add text
+      // Also handle pasted text as a "virtual image"
       if (textVal) {
-        content.push({ type: 'text', text: `TEXT INPUT:\n${textVal}` });
+        imagePromises.push((async () => {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 1000,
+              temperature: 0,
+              messages: [{ role: 'user', content: `Extract all travel booking data from this text. Return ONLY valid JSON with the same structure as a flight/passenger extraction: {"image_type":"other","flights":[{"origin":"XXX","destination":"YYY","date":"DDMON","flight_number":"000","carrier":"XX","booking_class":"X","departure_time":null,"arrival_time":null,"cabin":null}],"passengers":[{"last":null,"first":null,"title":null}],"phone":null,"email":null,"frequent_flyer":null}. Use null for missing fields. JSON only.\n\nText:\n${textVal}` }]
+            })
+          });
+          if (!res.ok) throw new Error('Text parse failed');
+          const data = await res.json();
+          let raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          console.log('[PARSE] text raw:', raw);
+          return JSON.parse(raw);
+        })());
       }
 
-      content.push({ type: 'text', text: `Extract all flight booking details from the above inputs. Return ONLY a valid JSON object with these exact keys. For each field include a "source" ("img_1", "img_2", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
+      showStatus('status1', 'loading', `Parsing ${totalImages} image(s) — waiting for all extractions...`);
+      const results = await Promise.all(imagePromises);
+      console.log('[PARSE] All image results:', results);
 
-{
-  "origin": {"value": "JFK", "source": "img_1", "confidence": "high"},
-  "destination": {"value": "LAX", "source": "img_1", "confidence": "high"},
-  "date": {"value": "15MAR", "source": "img_1", "confidence": "high"},
-  "flight_number": {"value": "AA100", "source": "img_1", "confidence": "high"},
-  "cabin": {"value": "Y", "source": "img_1", "confidence": "medium"},
-  "carrier": {"value": "AA", "source": "img_1", "confidence": "high"},
-  "passengers": [
-    {
-      "last": {"value": "SMITH", "source": "img_1", "confidence": "high"},
-      "first": {"value": "JOHN", "source": "img_1", "confidence": "high"},
-      "title": {"value": "MR", "source": "img_1", "confidence": "medium"}
-    }
-  ],
-  "phone": {"value": null, "source": "unknown", "confidence": "low"},
-  "pax_phone": {"value": null, "source": "unknown", "confidence": "low"},
-  "email": {"value": null, "source": "unknown", "confidence": "low"},
-  "frequent_flyer": {"value": null, "source": "unknown", "confidence": "low"}
-}
-
-For cabin, map to Sabre codes: Y=economy, C=business, F=first, W=premium economy.
-For date, use DDMON format (e.g. 15MAR).
-Return ONLY the JSON. No explanation. No markdown.` });
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-opus-4-6',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content }]
-        })
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || 'API error');
-      }
-
-      const data = await res.json();
-      let raw = data.content[0].text.trim();
-      // Strip markdown if present
-      raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const parsed = JSON.parse(raw);
+      // Step 2: Combine results in code
+      showStatus('status1', 'loading', 'Combining data from all images...');
+      const parsed = combineImageResults(results);
       state.parsedData = parsed;
+      state.perImageResults = results; // save for summary display
 
-      populatePage2(parsed);
+      populatePage2(parsed, results);
       goToPage(2);
-      showStatus('status1', 'success', '');
+      showStatus('status1', 'success', `Parsed ${totalImages} image(s) — ${parsed.flights.length} flight segment(s) found.`);
+      document.getElementById('parseBtn').disabled = false;
+
+      // Send parsed data to Zapier
+      sendToZapier('flight_parsed', {
+        flights: parsed.flights?.map(f => ({
+          origin: f.origin?.value, destination: f.destination?.value,
+          date: f.date?.value, flight_number: f.flight_number?.value,
+          carrier: f.carrier?.value, booking_class: f.booking_class?.value
+        })),
+        segment_count: parsed.flights?.length || 1,
+        passengers: parsed.passengers?.map(p => ({
+          last: p.last?.value, first: p.first?.value, title: p.title?.value
+        })),
+        phone: parsed.phone?.value,
+        email: parsed.email?.value
+      });
 
     } catch(e) {
       showStatus('status1', 'error', 'Parse failed: ' + e.message);
@@ -1033,40 +1322,212 @@ Return ONLY the JSON. No explanation. No markdown.` });
     }
   }
 
-  function populatePage2(d) {
-    const set = (id, field, upper) => {
+  // RENDER FLIGHT SEGMENT FIELDS (with source badges)
+  function renderSegmentFields() {
+    const count = parseInt(document.getElementById('f-segcount').value);
+    const container = document.getElementById('segmentFields');
+    container.innerHTML = '';
+    const labels = ['Outbound', 'Return', 'Segment 3', 'Segment 4'];
+    for (let i = 0; i < count; i++) {
+      container.innerHTML += `
+        <div class="card">
+          <div class="card-title" style="color:var(--accent2)">Segment ${i+1} — ${labels[i]}</div>
+          <div class="form-grid">
+            <div>
+              <div class="field-row">
+                <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-origin"></span>
+              </div>
+              <input type="text" id="f-seg${i}-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <div class="field-row">
+                <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-dest"></span>
+              </div>
+              <input type="text" id="f-seg${i}-dest" placeholder="LHR" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <div class="field-row">
+                <label class="required-label">Travel Date<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-date"></span>
+              </div>
+              <input type="text" id="f-seg${i}-date" placeholder="16MAR" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <div class="field-row">
+                <label>Flight Number</label>
+                <span class="src-tag" id="src-seg${i}-flightnum"></span>
+              </div>
+              <input type="text" id="f-seg${i}-flightnum" placeholder="142" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div>
+              <div class="field-row">
+                <label class="required-label">Booking Class<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-class"></span>
+              </div>
+              <input type="text" id="f-seg${i}-class" placeholder="Y" maxlength="1" title="Fare class: Y/B/O=economy, C/J/R=business, F=first" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+            <div>
+              <div class="field-row">
+                <label class="required-label">Airline Code<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-carrier"></span>
+              </div>
+              <input type="text" id="f-seg${i}-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase(); validateRequired()">
+            </div>
+          </div>
+        </div>`;
+    }
+    validateRequired();
+  }
+
+  renderSegmentFields(); // init
+
+  // RENDER EXTRACTION SUMMARY — shows what each image contributed
+  function renderExtractionSummary(perImageResults) {
+    const container = document.getElementById('extractionSummary');
+    if (!perImageResults || perImageResults.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted); font-size:0.8rem;">No extraction data.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    perImageResults.forEach((r, i) => {
+      const imgNum = i + 1;
+      const fileName = state.uploadedFiles[i]?.name || `Image ${imgNum}`;
+      const thumbUrl = state.uploadedDataURLs[i] || '';
+      const imageType = (r.image_type || 'unknown').replace(/_/g, ' ');
+
+      let html = `<div class="extract-card">`;
+      html += `<div class="extract-card-header">`;
+      if (thumbUrl) html += `<img class="extract-card-thumb" src="${thumbUrl}" alt="${fileName}">`;
+      html += `<div><div class="img-label">img_${imgNum}: ${fileName}</div>`;
+      html += `<span class="img-type">${imageType}</span></div></div>`;
+
+      // Show flights from this image
+      if (r.flights && r.flights.length > 0) {
+        r.flights.forEach((f, fi) => {
+          if (r.flights.length > 1) html += `<div class="extract-seg-divider">Flight ${fi + 1}</div>`;
+          const fields = [
+            ['Route', (f.origin || '???') + ' → ' + (f.destination || '???')],
+            ['Date', f.date],
+            ['Flight #', f.flight_number],
+            ['Carrier', f.carrier],
+            ['Class', f.booking_class],
+            ['Cabin', f.cabin],
+            ['Depart', f.departure_time],
+            ['Arrive', f.arrival_time]
+          ];
+          fields.forEach(([lbl, val]) => {
+            if (val) {
+              html += `<div class="extract-data-row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
+            }
+          });
+        });
+      }
+
+      // Show passengers from this image
+      if (r.passengers && r.passengers.length > 0) {
+        r.passengers.forEach(p => {
+          if (p.last || p.first) {
+            const name = [(p.title || ''), (p.first || ''), (p.last || '')].filter(Boolean).join(' ');
+            html += `<div class="extract-data-row"><span class="lbl">Passenger</span><span class="val">${name}</span></div>`;
+          }
+        });
+      }
+
+      // Show contact from this image
+      if (r.phone) html += `<div class="extract-data-row"><span class="lbl">Phone</span><span class="val">${r.phone}</span></div>`;
+      if (r.email) html += `<div class="extract-data-row"><span class="lbl">Email</span><span class="val">${r.email}</span></div>`;
+
+      // If nothing useful found
+      const hasData = (r.flights?.length > 0 && r.flights.some(f => f.origin || f.flight_number)) ||
+                      (r.passengers?.length > 0 && r.passengers.some(p => p.last || p.first)) ||
+                      r.phone || r.email;
+      if (!hasData) {
+        html += `<div class="extract-data-row"><span class="val null-val">No extractable data found</span></div>`;
+      }
+
+      html += `</div>`;
+      container.innerHTML += html;
+    });
+  }
+
+  // SET SOURCE BADGE on a field
+  function setSrcBadge(id, source, confidence) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!source || source === 'unknown') { el.textContent = ''; el.className = 'src-tag'; return; }
+    const cls = source.startsWith('img') ? 'img' : source === 'text' ? 'txt' : 'combined';
+    const confDot = confidence === 'high' ? '●' : confidence === 'medium' ? '◐' : '○';
+    el.textContent = source + ' ' + confDot;
+    el.className = `src-tag ${cls}`;
+  }
+
+  function populatePage2(d, perImageResults) {
+    // Write debug output
+    const debugEl = document.getElementById('debugOutput');
+    if (debugEl) {
+      let dbg = '=== PER-IMAGE RAW RESULTS ===\n';
+      if (perImageResults) {
+        perImageResults.forEach((r, i) => {
+          dbg += `\n--- img_${i+1} (${state.uploadedFiles[i]?.name || '?'}) ---\n`;
+          dbg += JSON.stringify(r, null, 2) + '\n';
+        });
+      }
+      dbg += '\n=== COMBINED RESULT ===\n';
+      dbg += JSON.stringify(d, null, 2);
+      dbg += `\n\n=== FLIGHT COUNT: ${d.flights?.length || 0} ===\n`;
+      if (d.flights) {
+        d.flights.forEach((f, i) => {
+          dbg += `Seg${i+1}: ${f.origin?.value || 'NULL'} -> ${f.destination?.value || 'NULL'} | ${f.date?.value || 'NULL'} | ${f.carrier?.value || 'NULL'}${f.flight_number?.value || 'NULL'} | class=${f.booking_class?.value || 'NULL'}\n`;
+        });
+      }
+      debugEl.textContent = dbg;
+    }
+
+    // Render extraction summary
+    if (perImageResults) {
+      renderExtractionSummary(perImageResults);
+    }
+
+    // Handle flights array
+    if (d.flights?.length) {
+      document.getElementById('f-segcount').value = Math.min(d.flights.length, 4);
+      renderSegmentFields();
+      d.flights.forEach((f, i) => {
+        if (i >= 4) return;
+        const setField = (suffix, field) => {
+          const el = document.getElementById(`f-seg${i}-${suffix}`);
+          if (!el || !field || !field.value) return;
+          el.value = field.value.toUpperCase();
+          setSrcBadge(`src-seg${i}-${suffix}`, field.source, field.confidence);
+        };
+        setField('origin', f.origin);
+        setField('dest', f.destination);
+        setField('date', f.date);
+        setField('flightnum', f.flight_number);
+        setField('class', f.booking_class);
+        setField('carrier', f.carrier);
+      });
+    }
+
+    // Shared fields
+    const set = (id, field) => {
       const el = document.getElementById('f-' + id);
       if (!el || !field || !field.value) return;
-      el.value = upper ? field.value.toUpperCase() : field.value;
-      setSrc('src-' + id, field.source);
-      setConf('conf-' + id, field.confidence);
-      if (field.source && (field.source.startsWith('img') || field.source === 'text')) {
-        const qv = document.getElementById('qv-' + id);
-        if (qv) qv.style.display = 'inline-flex';
-      }
+      el.value = field.value;
     };
-
-    set('origin', d.origin, true);
-    set('dest', d.destination, true);
-    set('date', d.date, true);
-    set('flightnum', d.flight_number);
-    set('carrier', d.carrier, true);
     set('phone', d.phone);
     set('paxphone', d.pax_phone);
     set('email', d.email);
     set('ff', d.frequent_flyer);
 
-    if (d.cabin?.value) {
-      const sel = document.getElementById('f-cabin');
-      sel.value = d.cabin.value;
-      setSrc('src-cabin', d.cabin.source);
-    }
-
+    // Passengers
     if (d.passengers?.length) {
-      const paxcount = d.passengers.length;
-      document.getElementById('f-paxcount').value = paxcount;
+      document.getElementById('f-paxcount').value = Math.min(d.passengers.length, 4);
       updatePaxFields();
       d.passengers.forEach((p, i) => {
+        if (i >= 4) return;
         const last = document.getElementById(`f-last${i}`);
         const first = document.getElementById(`f-first${i}`);
         const title = document.getElementById(`f-title${i}`);
@@ -1080,32 +1541,24 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const rcvd = document.getElementById('f-rcvdfrom');
     if (d.passengers?.[0]?.last?.value) rcvd.value = d.passengers[0].last.value.toUpperCase();
 
-    // Confidence summary
+    // Confidence warnings
     const lowFields = [];
-    ['origin','destination','date','cabin','carrier'].forEach(k => {
-      if (d[k]?.confidence === 'low') lowFields.push(k);
-    });
+    if (d.flights?.length) {
+      d.flights.forEach((f, i) => {
+        ['origin','destination','date','booking_class','carrier'].forEach(k => {
+          if (f[k]?.confidence === 'low' && f[k]?.value) lowFields.push(`seg${i+1} ${k}`);
+        });
+      });
+    }
     if (lowFields.length) {
       const note = document.getElementById('confidenceNote');
       note.style.display = 'block';
-      note.textContent = `⚠ Low confidence on: ${lowFields.join(', ')} — please verify manually.`;
+      note.textContent = `Low confidence on: ${lowFields.join(', ')} — please verify manually.`;
+    } else {
+      document.getElementById('confidenceNote').style.display = 'none';
     }
 
     validateRequired();
-  }
-
-  function setSrc(id, src) {
-    const el = document.getElementById(id);
-    if (!el || !src || src === 'unknown') return;
-    el.textContent = src;
-    el.className = 'source-badge ' + (src.startsWith('img') ? 'img' : 'txt');
-  }
-
-  function setConf(id, conf) {
-    const el = document.getElementById(id);
-    if (!el || !conf) return;
-    el.className = 'confidence-dot ' + ({high:'conf-high', medium:'conf-med', low:'conf-low'}[conf] || '');
-    el.title = 'Confidence: ' + conf;
   }
 
   function updatePaxFields() {
@@ -1144,15 +1597,26 @@ Return ONLY the JSON. No explanation. No markdown.` });
   updatePaxFields(); // init
 
   function validateRequired() {
-    const fields = ['f-origin','f-dest','f-date','f-cabin','f-carrier','f-phone','f-tickdate','f-rcvdfrom'];
-    fields.forEach(id => {
+    // Segment fields
+    const segcount = parseInt(document.getElementById('f-segcount')?.value || 1);
+    for (let i = 0; i < segcount; i++) {
+      ['origin','dest','date','class','carrier'].forEach(f => {
+        const el = document.getElementById(`f-seg${i}-${f}`);
+        if (!el) return;
+        if (!el.value.trim()) el.classList.add('required-empty');
+        else el.classList.remove('required-empty');
+      });
+    }
+    // Shared required fields
+    ['f-phone','f-tickdate','f-rcvdfrom'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       if (!el.value.trim()) el.classList.add('required-empty');
       else el.classList.remove('required-empty');
     });
-    const count = parseInt(document.getElementById('f-paxcount').value || 1);
-    for (let i = 0; i < count; i++) {
+    // Passenger fields
+    const paxcount = parseInt(document.getElementById('f-paxcount')?.value || 1);
+    for (let i = 0; i < paxcount; i++) {
       ['last','first','title'].forEach(f => {
         const el = document.getElementById(`f-${f}${i}`);
         if (!el) return;
@@ -1162,32 +1626,167 @@ Return ONLY the JSON. No explanation. No markdown.` });
     }
   }
 
-  // GENERATE STAGE 1
-  function generateStage1() {
-    const origin = document.getElementById('f-origin').value.trim();
-    const dest = document.getElementById('f-dest').value.trim();
-    const date = document.getElementById('f-date').value.trim();
-    const carrier = document.getElementById('f-carrier').value.trim();
-    const flightnum = document.getElementById('f-flightnum').value.trim();
+  // GENERATE BOTH COMMANDS (no blocking — always shows what we have)
+  function generateCommands() {
+    const segcount = parseInt(document.getElementById('f-segcount').value);
+    const paxcount = parseInt(document.getElementById('f-paxcount').value);
+    const segments = [];
+    const warnings = [];
 
-    if (!origin || !dest || !date || !carrier) {
-      showStatus('status2', 'error', 'Fill required fields: Origin, Destination, Date, and Carrier.');
-      return;
+    // Collect segment data — don't block on missing fields
+    for (let i = 0; i < segcount; i++) {
+      const origin = document.getElementById(`f-seg${i}-origin`)?.value.trim() || '';
+      const dest = document.getElementById(`f-seg${i}-dest`)?.value.trim() || '';
+      const date = document.getElementById(`f-seg${i}-date`)?.value.trim() || '';
+      const carrier = document.getElementById(`f-seg${i}-carrier`)?.value.trim() || '';
+      const flightnum = document.getElementById(`f-seg${i}-flightnum`)?.value.trim() || '';
+      const bookingClass = document.getElementById(`f-seg${i}-class`)?.value.trim() || 'Y';
+
+      // Track missing required fields
+      if (!origin) warnings.push(`Seg ${i+1}: Origin missing`);
+      if (!dest) warnings.push(`Seg ${i+1}: Destination missing`);
+      if (!date) warnings.push(`Seg ${i+1}: Date missing`);
+      if (!carrier) warnings.push(`Seg ${i+1}: Carrier missing`);
+
+      segments.push({ origin, dest, date, carrier, flightnum, bookingClass });
     }
 
-    let cmd;
-    if (flightnum) {
-      // Long sell format - direct flight lookup
-      const cabinCode = document.getElementById('f-cabin').value || 'Y';
-      cmd = `1${date}${origin}${dest}/${carrier}`;
-    } else {
-      cmd = `1${date}${origin}${dest}/${carrier}`;
+    state.segments = segments;
+
+    // ---- STAGE 1: Sell / Availability commands ----
+    const stage1Lines = [];
+    segments.forEach((s, i) => {
+      if (s.flightnum && s.carrier) {
+        // Direct sell: 0AA142Y16MARJFKLHR → actually 1AA142Y16MARJFKLHR
+        stage1Lines.push(`1${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}`);
+      } else if (s.origin && s.dest && s.date) {
+        // Availability check: 116MARJFKLHR/AA
+        stage1Lines.push(`1${s.date}${s.origin}${s.dest}${s.carrier ? '/' + s.carrier : ''}`);
+      } else {
+        stage1Lines.push(`// Segment ${i+1}: [INCOMPLETE — fill in origin/dest/date]`);
+      }
+    });
+
+    const allHaveFlightNum = segments.every(s => !!s.flightnum && !!s.carrier);
+    const stage1Cmd = stage1Lines.join('\n');
+
+    // ---- STAGE 2: Full PNR block ----
+    const phone = document.getElementById('f-phone').value.trim().replace(/\D/g,'');
+    const paxphone = document.getElementById('f-paxphone').value.trim().replace(/\D/g,'');
+    const email = document.getElementById('f-email').value.trim();
+    const tickdate = document.getElementById('f-tickdate').value.trim();
+    const rcvdfrom = document.getElementById('f-rcvdfrom').value.trim();
+    const ssr = document.getElementById('f-ssr').value.trim();
+    const ff = document.getElementById('f-ff').value.trim();
+    const sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
+
+    if (!phone) warnings.push('Agency phone missing');
+    if (!tickdate) warnings.push('Ticketing deadline missing');
+    if (!rcvdfrom) warnings.push('Received from missing');
+
+    let stage2Lines = [];
+
+    // Sell lines (direct sell included in Stage 2 as well)
+    if (allHaveFlightNum) {
+      segments.forEach(s => {
+        stage2Lines.push(`0${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}SS1`);
+      });
     }
 
+    // Passenger names
+    for (let i = 0; i < paxcount; i++) {
+      const last = document.getElementById(`f-last${i}`)?.value.trim() || '';
+      const first = document.getElementById(`f-first${i}`)?.value.trim() || '';
+      const title = document.getElementById(`f-title${i}`)?.value.trim() || 'MR';
+      if (last && first) {
+        stage2Lines.push(`-${last}/${first}${title}`);
+      } else {
+        warnings.push(`Pax ${i+1}: Name missing`);
+        stage2Lines.push(`// Pax ${i+1}: [NAME MISSING]`);
+      }
+    }
+
+    // Phone
+    if (phone) stage2Lines.push(`9${phone}-A`);
+    else stage2Lines.push(`// 9[PHONE]-A`);
+    if (paxphone) stage2Lines.push(`9${paxphone}-B`);
+
+    // Email
+    if (email) stage2Lines.push(`APE-${sabreEmail}`);
+
+    // Frequent Flyer
+    if (ff) {
+      const parts = ff.replace('-','¥').split('¥');
+      const carrier = parts[0] || 'AA';
+      const num = parts[1] || ff;
+      stage2Lines.push(`FFDL${carrier}${num}-1.1`);
+    }
+
+    // SSR
+    if (ssr) stage2Lines.push(`3${ssr}-1.1`);
+
+    // Ticketing deadline
+    stage2Lines.push(tickdate ? `7TAW${tickdate}/` : `// 7TAW[DATE]/`);
+
+    // Received from + end
+    stage2Lines.push(rcvdfrom ? `6${rcvdfrom}` : `// 6[RECEIVED FROM]`);
+    stage2Lines.push(`ER`);
+
+    const stage2Cmd = stage2Lines.join('\n');
+
+    // ---- Render Page 3 ----
     goToPage(3);
-    const out = document.getElementById('stage1output');
-    out.innerHTML = cmd;
-    addCopyBtn('stage1output', cmd);
+
+    // Stage 1
+    const segLabel = segcount > 1 ? `${segcount} segments` : '1 segment';
+    const stage1Label = document.querySelector('#page3 .stage-label span:first-child');
+    if (allHaveFlightNum) {
+      stage1Label.textContent = `STAGE 1 — Direct Sell (${segLabel})`;
+    } else {
+      stage1Label.textContent = `STAGE 1 — Availability Check (${segLabel})`;
+    }
+    const out1 = document.getElementById('stage1output');
+    out1.textContent = stage1Cmd;
+    addCopyBtn('stage1output', stage1Cmd);
+
+    // Stage 2
+    const out2 = document.getElementById('stage2output');
+    out2.textContent = stage2Cmd;
+    addCopyBtn('stage2output', stage2Cmd);
+    const stage2Label = document.querySelector('#page3 .card:has(#stage2output) .stage-label span:first-child');
+    if (stage2Label) {
+      stage2Label.textContent = allHaveFlightNum
+        ? 'STAGE 2 — Full PNR Booking Block (includes sell)'
+        : 'STAGE 2 — PNR Completion (paste after sells confirmed)';
+    }
+
+    // Availability input — show only if not all flights have numbers
+    const availCard = document.getElementById('availResponseCard');
+    if (allHaveFlightNum) {
+      availCard.style.display = 'none';
+    } else {
+      availCard.style.display = '';
+    }
+
+    // Warnings
+    const warningsEl = document.getElementById('commandWarnings');
+    if (warnings.length > 0) {
+      warningsEl.style.display = 'block';
+      warningsEl.innerHTML = '<strong>Missing fields:</strong> ' + warnings.join(' | ');
+    } else {
+      warningsEl.style.display = 'none';
+    }
+
+    const pageSub = document.getElementById('page3sub');
+    pageSub.textContent = `// Step 03 — Both commands generated for ${segLabel}. Review and copy.`;
+    showStatus('status3', 'success', `${segLabel} generated. ${warnings.length > 0 ? warnings.length + ' missing field(s) noted.' : 'All fields complete.'}`);
+
+    sendToZapier('commands_generated', {
+      stage1: stage1Cmd, stage2: stage2Cmd,
+      segments: segments.map(s => ({ origin: s.origin, destination: s.dest, date: s.date, carrier: s.carrier, flight_number: s.flightnum || null, booking_class: s.bookingClass })),
+      direct_sell: allHaveFlightNum,
+      warnings
+    });
   }
 
   // PARSE AVAIL RESPONSE
@@ -1195,7 +1794,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
     const resp = document.getElementById('sabreResponse').value.trim();
     if (!resp) { alert('Paste Sabre availability response first.'); return; }
 
-    const cabin = document.getElementById('f-cabin').value || 'Y';
+    const bookingClass = document.getElementById('f-seg0-class')?.value || 'Y';
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1211,10 +1810,14 @@ Return ONLY the JSON. No explanation. No markdown.` });
           max_tokens: 200,
           messages: [{
             role: 'user',
-            content: `From this Sabre GDS availability response, identify the best line number for cabin class "${cabin}". Return ONLY a JSON like: {"line": "1", "class": "Y"}. No explanation.\n\nSabre response:\n${resp}`
+            content: `From this Sabre GDS availability response, identify the best line number for booking class "${bookingClass}". Return ONLY a JSON like: {"line": "1", "class": "Y"}. No explanation.\n\nSabre response:\n${resp}`
           }]
         })
       });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || 'API error');
+      }
       const data = await res.json();
       let raw = data.content[0].text.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
       const parsed = JSON.parse(raw);
@@ -1225,67 +1828,7 @@ Return ONLY the JSON. No explanation. No markdown.` });
     }
   }
 
-  // GENERATE STAGE 2
-  function generateStage2() {
-    const origin = document.getElementById('f-origin').value.trim();
-    const dest = document.getElementById('f-dest').value.trim();
-    const cabin = document.getElementById('f-cabin').value.trim() || 'Y';
-    const linenum = document.getElementById('f-linenum').value.trim() || '1';
-    const paxcount = parseInt(document.getElementById('f-paxcount').value);
-    const phone = document.getElementById('f-phone').value.trim().replace(/\D/g,'');
-    const paxphone = document.getElementById('f-paxphone').value.trim().replace(/\D/g,'');
-    const email = document.getElementById('f-email').value.trim();
-    const tickdate = document.getElementById('f-tickdate').value.trim();
-    const rcvdfrom = document.getElementById('f-rcvdfrom').value.trim();
-    const ssr = document.getElementById('f-ssr').value.trim();
-    const ff = document.getElementById('f-ff').value.trim();
-
-    // Format email for Sabre (@ becomes //, _ becomes ..)
-    const sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
-
-    let lines = [];
-
-    // 1. Sell segment
-    lines.push(`0${cabin}${linenum}`);
-
-    // 2. Passenger names
-    for (let i = 0; i < paxcount; i++) {
-      const last = document.getElementById(`f-last${i}`)?.value.trim() || '';
-      const first = document.getElementById(`f-first${i}`)?.value.trim() || '';
-      const title = document.getElementById(`f-title${i}`)?.value.trim() || 'MR';
-      if (last && first) lines.push(`-${last}/${first}${title}`);
-    }
-
-    // 3. Phone fields
-    if (phone) lines.push(`9${phone}-A`);
-    if (paxphone) lines.push(`9${paxphone}-B`);
-
-    // 4. Email
-    if (email) lines.push(`APE-${sabreEmail}`);
-
-    // 5. Frequent Flyer
-    if (ff) {
-      const parts = ff.replace('-','¥').split('¥');
-      const carrier = parts[0] || 'AA';
-      const num = parts[1] || ff;
-      lines.push(`FFDL${carrier}${num}-1.1`);
-    }
-
-    // 6. SSR
-    if (ssr) lines.push(`3${ssr}-1.1`);
-
-    // 7. Ticketing time limit
-    lines.push(`7TAW${tickdate}/`);
-
-    // 8. Received from + End
-    lines.push(`6${rcvdfrom}`);
-    lines.push(`ER`);
-
-    const cmd = lines.join('\n');
-    const out = document.getElementById('stage2output');
-    out.innerHTML = cmd;
-    addCopyBtn('stage2output', cmd);
-  }
+  // generateStage2 removed — now handled by generateCommands()
 
   function addCopyBtn(containerId, text) {
     const container = document.getElementById(containerId);
@@ -1306,16 +1849,34 @@ Return ONLY the JSON. No explanation. No markdown.` });
   // PNR LOG
   function logPNR() {
     const pnr = document.getElementById('f-pnr').value.trim();
-    const origin = document.getElementById('f-origin').value;
-    const dest = document.getElementById('f-dest').value;
-    const date = document.getElementById('f-date').value;
-    const count = parseInt(document.getElementById('f-paxcount').value);
+    const segcount = parseInt(document.getElementById('f-segcount').value);
+    const paxcount = parseInt(document.getElementById('f-paxcount').value);
     const last = document.getElementById('f-last0')?.value || '';
     const now = new Date().toISOString().split('T')[0];
 
-    const log = `${now}\t${pnr}\t${origin}\t${dest}\t${date}\t${last}\t${count} PAX`;
+    // Build route string from all segments
+    let route = '';
+    for (let i = 0; i < segcount; i++) {
+      const origin = document.getElementById(`f-seg${i}-origin`)?.value || '';
+      const dest = document.getElementById(`f-seg${i}-dest`)?.value || '';
+      if (i === 0) route = `${origin}-${dest}`;
+      else route += `-${dest}`;
+    }
+    const date = document.getElementById('f-seg0-date')?.value || '';
+
+    const log = `${now}\t${pnr}\t${route}\t${date}\t${last}\t${paxcount} PAX\t${segcount} SEG`;
     navigator.clipboard.writeText(log);
-    alert('Log entry copied to clipboard:\n' + log + '\n\nPaste into Google Sheets.');
+
+    sendToZapier('pnr_confirmed', {
+      pnr, route, date,
+      passenger_name: last,
+      passenger_count: paxcount,
+      segment_count: segcount,
+      booked_date: now
+    });
+
+    const zapMsg = state.zapierUrl ? ' Also sent to Zapier.' : '';
+    alert('Log entry copied to clipboard:\n' + log + '\n\nPaste into Google Sheets.' + zapMsg);
   }
 
   // NAVIGATION

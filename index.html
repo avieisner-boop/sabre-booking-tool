@@ -969,41 +969,40 @@ Example:
 
 Common document types you may see:
 - PASSPORT / ID CARD: Extract passenger name (last, first). The name on the ID is the passenger name.
-- FLIGHT SEARCH RESULTS / AVAILABILITY / ITINERARY: Extract ALL flight segments. A round trip has 2 segments (outbound + return). Extract origin, destination, date, flight number, airline code, booking class for EACH segment.
-- BOOKING CONFIRMATION: Extract all flight details plus passenger names, contact info.
+- FLIGHT DETAIL PAGE (airline app/website): Shows details for a SPECIFIC flight the user is viewing. Extract the flight number, route (origin/destination cities and airport codes), date, carrier, and fare/booking class from THIS specific flight.
+- FLIGHT SEARCH RESULTS / AVAILABILITY: May show MULTIPLE flights. Look for the one that is SELECTED or HIGHLIGHTED (usually shown in a different color, expanded, or with a checkmark). If unclear which is selected, extract ALL visible flights and mark confidence as "medium".
+- TRIP SUMMARY / BOOKING CONFIRMATION: Shows the user's selected/booked flights. Extract all flight details plus passenger names, contact info.
 - EMAIL / TEXT: May contain any of the above plus phone, email, special requests.
 
 CRITICAL RULES:
+- ONLY extract flight data that you can ACTUALLY READ from the images. NEVER guess or invent flight numbers, routes, dates, or fare classes.
+- If a field is not clearly visible in any image, set its value to null — do NOT fill it with assumed data.
 - Combine information from ALL sources. Name may come from an ID, flights from a search screenshot.
-- Extract EVERY flight segment — do NOT skip return flights. One-way = 1 flight, round trip = 2 flights, multi-city = 3+ flights.
+- Extract EVERY flight segment you can clearly see. One-way = 1 flight, round trip = 2 flights, multi-city = 3+ flights. But ONLY include segments you can actually read from the images.
 - Do NOT ignore any uploaded file.
+- Read airport codes, city names, flight numbers, and dates EXACTLY as shown in the images. Do not swap origin and destination — the departure city is the origin, the arrival city is the destination.
+- For airline app screenshots: the city/airport shown at the TOP or LEFT of an arrow/line is typically the ORIGIN (departure), and the one at the BOTTOM or RIGHT is the DESTINATION (arrival).
+- If a screenshot shows a flight detail page, that IS the flight the user wants — extract it.
 
 Return ONLY a valid JSON object. For each field include "source" ("img_1", "img_2", "img_3", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
 
+Example structure (use actual values from the images, NOT these placeholders):
 {
   "flights": [
     {
-      "origin": {"value": "JFK", "source": "img_2", "confidence": "high"},
-      "destination": {"value": "LHR", "source": "img_2", "confidence": "high"},
-      "date": {"value": "16MAR", "source": "img_1", "confidence": "high"},
-      "flight_number": {"value": "142", "source": "img_3", "confidence": "high"},
-      "carrier": {"value": "AA", "source": "img_3", "confidence": "high"},
-      "booking_class": {"value": "O", "source": "img_3", "confidence": "high"}
-    },
-    {
-      "origin": {"value": "LHR", "source": "img_2", "confidence": "high"},
-      "destination": {"value": "JFK", "source": "img_2", "confidence": "high"},
-      "date": {"value": "23MAR", "source": "img_1", "confidence": "high"},
-      "flight_number": {"value": "103", "source": "img_3", "confidence": "high"},
-      "carrier": {"value": "AA", "source": "img_3", "confidence": "high"},
-      "booking_class": {"value": "R", "source": "img_3", "confidence": "high"}
+      "origin": {"value": "XXX", "source": "img_1", "confidence": "high"},
+      "destination": {"value": "YYY", "source": "img_1", "confidence": "high"},
+      "date": {"value": "01JAN", "source": "img_1", "confidence": "high"},
+      "flight_number": {"value": "000", "source": "img_1", "confidence": "high"},
+      "carrier": {"value": "XX", "source": "img_1", "confidence": "high"},
+      "booking_class": {"value": "X", "source": "img_1", "confidence": "high"}
     }
   ],
   "passengers": [
     {
-      "last": {"value": "SMITH", "source": "img_1", "confidence": "high"},
-      "first": {"value": "JOHN", "source": "img_1", "confidence": "high"},
-      "title": {"value": "MR", "source": "img_1", "confidence": "medium"}
+      "last": {"value": "LASTNAME", "source": "img_2", "confidence": "high"},
+      "first": {"value": "FIRSTNAME", "source": "img_2", "confidence": "high"},
+      "title": {"value": "MR", "source": "img_2", "confidence": "medium"}
     }
   ],
   "phone": {"value": null, "source": "unknown", "confidence": "low"},
@@ -1013,13 +1012,14 @@ Return ONLY a valid JSON object. For each field include "source" ("img_1", "img_
 }
 
 Rules:
-- "flights" array: one entry per flight segment. Round trips MUST have 2 entries.
-- booking_class: use the specific fare class letter if visible (O, R, B, K, J, etc). If only cabin type is shown, use Y=economy, C=business, F=first, W=premium economy.
-- flight_number: ONLY the numeric part (e.g. "142" not "AA142"). Carrier goes in "carrier" field.
-- date: DDMON format (e.g. 16MAR).
+- "flights" array: one entry per flight segment you can clearly read from the images. Include only segments with data you can actually see.
+- booking_class: use the specific fare class letter if visible (O, R, B, K, J, etc). If only cabin type is shown, use Y=economy, C=business, F=first, W=premium economy. If no fare class is visible at all, use null.
+- flight_number: ONLY the numeric part (e.g. "550" not "UA550"). Carrier goes in "carrier" field.
+- date: DDMON format (e.g. 03APR). Read the exact date from the image.
 - Passenger names from IDs should be UPPERCASE.
-- carrier: 2-letter IATA airline code (AA, UA, DL, BA).
-- origin/destination: 3-letter IATA airport code.
+- carrier: 2-letter IATA airline code (AA, UA, DL, BA, etc).
+- origin/destination: 3-letter IATA airport code. Read these directly from the image — do NOT guess or assume.
+- IMPORTANT: Every value you return MUST come from something you can read in the provided images or text. If you cannot read it clearly, use null.
 Return ONLY the JSON. No explanation. No markdown.` });
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {

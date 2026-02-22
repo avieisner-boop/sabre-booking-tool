@@ -132,6 +132,7 @@
   }
 
   .upload-zone {
+    display: block;
     border: 2px dashed var(--border);
     border-radius: 8px;
     padding: 2.5rem;
@@ -139,6 +140,14 @@
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
+    /* Override generic label styles */
+    font-size: inherit;
+    font-weight: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text);
+    margin-bottom: 0;
+    font-family: var(--font-display);
   }
 
   .upload-zone:hover, .upload-zone.drag-over {
@@ -679,7 +688,7 @@
 
 <!-- PAGE 1: Input -->
 <div class="page active" id="page1">
-  <div class="page-title">Upload Flight Details <span style="font-size:0.55em; color:var(--muted); font-weight:400;">v7</span></div>
+  <div class="page-title">Upload Flight Details <span style="font-size:0.55em; color:var(--muted); font-weight:400;">v8</span></div>
   <div class="page-sub">// Step 01 — Provide itinerary via image or text. AI will parse all fields.</div>
 
   <div class="card">
@@ -707,13 +716,13 @@
   <div class="card">
     <div class="card-title">📎 Image Upload</div>
     <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none">
-    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <label for="fileInput" class="upload-zone" id="uploadZone">
       <span class="upload-icon">🖼</span>
       <div class="upload-label">
-        <strong>Click or drag</strong> to upload itinerary images<br>
-        <span style="font-size:0.75rem">JPG, PNG, PDF · Multiple files OK</span>
+        <strong>Tap here</strong> to upload itinerary images<br>
+        <span style="font-size:0.75rem">JPG, PNG, PDF · Multiple files OK · You can upload multiple times</span>
       </div>
-    </div>
+    </label>
     <div class="file-previews" id="filePreviews"></div>
   </div>
 
@@ -930,6 +939,14 @@
 </div>
 
 <script>
+  // GLOBAL ERROR HANDLER — surfaces JS errors on the page
+  window.onerror = function(msg, url, line, col, error) {
+    console.error('[JS ERROR]', msg, 'at line', line);
+    const el = document.getElementById('status1');
+    if (el) el.innerHTML = '<div class="status-bar error">JS Error: ' + msg + ' (line ' + line + ')</div>';
+    return false;
+  };
+
   // STATE
   const state = {
     apiKey: '',
@@ -974,23 +991,28 @@
   });
 
   fileInput.addEventListener('change', () => {
-    if (fileInput.files.length > 0) {
-      handleFiles(fileInput.files);
+    // Copy files into a plain array BEFORE resetting the input
+    const filesToAdd = Array.from(fileInput.files);
+    console.log('[UPLOAD] change event fired, files selected:', filesToAdd.length);
+    if (filesToAdd.length > 0) {
+      handleFiles(filesToAdd);
     }
-    // Reset so the same files can be re-selected and change event always fires
+    // Reset input value so re-selecting the same files triggers change again
     fileInput.value = '';
   });
 
-  function handleFiles(files) {
-    const fileList = Array.from(files);
-    console.log('[UPLOAD] Adding', fileList.length, 'file(s). Current total:', state.uploadedFiles.length);
-    fileList.forEach(file => {
+  function handleFiles(fileArray) {
+    console.log('[UPLOAD] handleFiles called with', fileArray.length, 'file(s). Current total:', state.uploadedFiles.length);
+    fileArray.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
         state.uploadedFiles.push(file);
         state.uploadedDataURLs.push(e.target.result);
         console.log('[UPLOAD] File loaded:', file.name, 'Total now:', state.uploadedFiles.length);
         renderFilePreviews();
+      };
+      reader.onerror = () => {
+        console.error('[UPLOAD] Failed to read file:', file.name);
       };
       reader.readAsDataURL(file);
     });

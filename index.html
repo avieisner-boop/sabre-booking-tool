@@ -679,7 +679,7 @@
 
 <!-- PAGE 1: Input -->
 <div class="page active" id="page1">
-  <div class="page-title">Upload Flight Details <span style="font-size:0.55em; color:var(--muted); font-weight:400;">v6</span></div>
+  <div class="page-title">Upload Flight Details <span style="font-size:0.55em; color:var(--muted); font-weight:400;">v7</span></div>
   <div class="page-sub">// Step 01 — Provide itinerary via image or text. AI will parse all fields.</div>
 
   <div class="card">
@@ -706,7 +706,7 @@
 
   <div class="card">
     <div class="card-title">📎 Image Upload</div>
-    <input type="file" id="fileInput" multiple accept="image/*,.pdf">
+    <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none">
     <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
       <span class="upload-icon">🖼</span>
       <div class="upload-label">
@@ -973,14 +973,23 @@
     handleFiles(e.dataTransfer.files);
   });
 
-  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      handleFiles(fileInput.files);
+    }
+    // Reset so the same files can be re-selected and change event always fires
+    fileInput.value = '';
+  });
 
   function handleFiles(files) {
-    Array.from(files).forEach(file => {
+    const fileList = Array.from(files);
+    console.log('[UPLOAD] Adding', fileList.length, 'file(s). Current total:', state.uploadedFiles.length);
+    fileList.forEach(file => {
       const reader = new FileReader();
       reader.onload = (e) => {
         state.uploadedFiles.push(file);
         state.uploadedDataURLs.push(e.target.result);
+        console.log('[UPLOAD] File loaded:', file.name, 'Total now:', state.uploadedFiles.length);
         renderFilePreviews();
       };
       reader.readAsDataURL(file);
@@ -1012,6 +1021,14 @@
       chip.appendChild(removeSpan);
       container.appendChild(chip);
     });
+    // Update parse button to show file count
+    const btn = document.getElementById('parseBtn');
+    const count = state.uploadedFiles.length;
+    if (count > 0) {
+      btn.textContent = `⚡ Parse ${count} Image${count > 1 ? 's' : ''} & Continue`;
+    } else {
+      btn.textContent = '⚡ Parse & Continue to Booking Form';
+    }
   }
 
   function removeFile(i) {
@@ -1233,19 +1250,20 @@ No explanation. No markdown. JSON only.` }
 
   // PARSE INPUTS
   async function parseInputs() {
+    console.log('[PARSE] Button clicked. Files:', state.uploadedFiles.length, 'DataURLs:', state.uploadedDataURLs.length);
     const apiKey = document.getElementById('apiKey').value.trim();
     const textVal = document.getElementById('textInput').value.trim();
 
     if (!apiKey) { showStatus('status1', 'error', 'Enter your Claude API key above first.'); return; }
     if (!textVal && state.uploadedFiles.length === 0) {
-      showStatus('status1', 'error', 'Upload at least one image or paste text to parse.');
+      showStatus('status1', 'error', 'Upload at least one image or paste text to parse. (Files tracked: ' + state.uploadedFiles.length + ')');
       return;
     }
 
     state.apiKey = apiKey;
     state.zapierUrl = document.getElementById('zapierUrl').value.trim();
     const totalImages = state.uploadedDataURLs.length;
-    showStatus('status1', 'loading', `Parsing ${totalImages} image(s) — extracting data from each...`);
+    showStatus('status1', 'loading', `Parsing ${totalImages} image(s) and ${textVal ? '1 text block' : 'no text'} — calling Claude API...`);
     document.getElementById('parseBtn').disabled = true;
 
     try {
@@ -1314,7 +1332,8 @@ No explanation. No markdown. JSON only.` }
       });
 
     } catch(e) {
-      showStatus('status1', 'error', 'Parse failed: ' + e.message);
+      console.error('[PARSE] Error:', e);
+      showStatus('status1', 'error', 'Parse failed: ' + e.message + ' (Check browser console for details)');
       document.getElementById('parseBtn').disabled = false;
     }
   }

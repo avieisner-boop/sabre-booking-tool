@@ -560,6 +560,82 @@
     margin-bottom: 1rem;
   }
 
+  /* Extraction summary panel */
+  .extract-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .extract-card {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+  .extract-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0,212,255,0.1);
+  }
+  .extract-card-header .img-label {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.8rem;
+  }
+  .extract-card-header .img-type {
+    background: rgba(0,212,255,0.15);
+    color: var(--accent);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .extract-card-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .extract-data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    color: var(--text);
+  }
+  .extract-data-row .lbl { color: var(--muted); }
+  .extract-data-row .val { color: var(--green); font-weight: 600; }
+  .extract-data-row .val.null-val { color: var(--muted); font-style: italic; }
+  .extract-seg-divider {
+    border-top: 1px dashed rgba(255,255,255,0.08);
+    margin: 0.35rem 0;
+    font-size: 0.68rem;
+    color: var(--accent2);
+    padding-top: 0.25rem;
+    font-weight: 700;
+  }
+  .src-tag {
+    display: inline-block;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    margin-left: 0.35rem;
+    vertical-align: middle;
+  }
+  .src-tag.img { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .src-tag.txt { background: rgba(255,107,53,0.15); color: var(--accent2); }
+  .src-tag.combined { background: rgba(0,255,136,0.12); color: var(--green); }
+
   .stage-label {
     display: flex;
     align-items: center;
@@ -662,15 +738,24 @@
 <!-- PAGE 2: Booking Form -->
 <div class="page" id="page2">
   <div class="page-title">Review & Complete Booking</div>
-  <div class="page-sub">// Step 02 — Verify parsed fields. Required fields highlighted in red.</div>
+  <div class="page-sub">// Step 02 — Data extracted from each image, then combined. Verify and edit below.</div>
 
   <div class="note-box" id="confidenceNote" style="display:none"></div>
 
   <div id="status2"></div>
 
-  <!-- FLIGHT SEGMENTS (dynamic) -->
+  <!-- EXTRACTION SUMMARY — what was found in each image -->
   <div class="card">
-    <div class="card-title">✈ Flight Segments</div>
+    <div class="card-title">Extracted Data Per Image</div>
+    <div class="page-sub" style="margin-bottom:0.75rem">Each card shows what was read from that specific image. Combined result fills the form below.</div>
+    <div class="extract-summary" id="extractionSummary">
+      <div style="color:var(--muted); font-size:0.8rem;">No extraction data yet.</div>
+    </div>
+  </div>
+
+  <!-- COMBINED FLIGHT SEGMENTS -->
+  <div class="card">
+    <div class="card-title">Combined Flight Segments</div>
     <div>
       <label>Number of Segments</label>
       <select id="f-segcount" onchange="renderSegmentFields()">
@@ -685,7 +770,7 @@
 
   <!-- PASSENGERS -->
   <div class="card">
-    <div class="card-title">👤 Passengers</div>
+    <div class="card-title">Passengers</div>
     <div>
       <label>Number of Passengers</label>
       <select id="f-paxcount" onchange="updatePaxFields()">
@@ -700,7 +785,7 @@
 
   <!-- CONTACT -->
   <div class="card">
-    <div class="card-title">📞 Contact Details</div>
+    <div class="card-title">Contact Details</div>
     <div class="form-grid">
       <div>
         <div class="field-row">
@@ -728,7 +813,7 @@
 
   <!-- BOOKING ADMIN -->
   <div class="card">
-    <div class="card-title">🗓 Booking Administration</div>
+    <div class="card-title">Booking Administration</div>
     <div class="form-grid">
       <div>
         <div class="field-row">
@@ -754,7 +839,7 @@
   </div>
 
   <div class="actions-row">
-    <button class="btn btn-secondary" onclick="goBack()">← Back</button>
+    <button class="btn btn-secondary" onclick="goBack()">Back</button>
     <button class="btn btn-primary" onclick="generateStage1()">Generate Stage 1 Command</button>
   </div>
 </div>
@@ -1205,8 +1290,9 @@ No explanation. No markdown. JSON only.` }
       showStatus('status1', 'loading', 'Combining data from all images...');
       const parsed = combineImageResults(results);
       state.parsedData = parsed;
+      state.perImageResults = results; // save for summary display
 
-      populatePage2(parsed);
+      populatePage2(parsed, results);
       goToPage(2);
       showStatus('status1', 'success', `Parsed ${totalImages} image(s) — ${parsed.flights.length} flight segment(s) found.`);
       document.getElementById('parseBtn').disabled = false;
@@ -1232,7 +1318,7 @@ No explanation. No markdown. JSON only.` }
     }
   }
 
-  // RENDER FLIGHT SEGMENT FIELDS
+  // RENDER FLIGHT SEGMENT FIELDS (with source badges)
   function renderSegmentFields() {
     const count = parseInt(document.getElementById('f-segcount').value);
     const container = document.getElementById('segmentFields');
@@ -1241,30 +1327,48 @@ No explanation. No markdown. JSON only.` }
     for (let i = 0; i < count; i++) {
       container.innerHTML += `
         <div class="card">
-          <div class="card-title" style="color:var(--accent2)">✈ Segment ${i+1} — ${labels[i]}</div>
+          <div class="card-title" style="color:var(--accent2)">Segment ${i+1} — ${labels[i]}</div>
           <div class="form-grid">
             <div>
-              <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
+              <div class="field-row">
+                <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-origin"></span>
+              </div>
               <input type="text" id="f-seg${i}-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
             </div>
             <div>
-              <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
+              <div class="field-row">
+                <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-dest"></span>
+              </div>
               <input type="text" id="f-seg${i}-dest" placeholder="LHR" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
             </div>
             <div>
-              <label class="required-label">Travel Date<span class="req-star">*</span></label>
+              <div class="field-row">
+                <label class="required-label">Travel Date<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-date"></span>
+              </div>
               <input type="text" id="f-seg${i}-date" placeholder="16MAR" oninput="this.value=this.value.toUpperCase(); validateRequired()">
             </div>
             <div>
-              <label>Flight Number</label>
+              <div class="field-row">
+                <label>Flight Number</label>
+                <span class="src-tag" id="src-seg${i}-flightnum"></span>
+              </div>
               <input type="text" id="f-seg${i}-flightnum" placeholder="142" oninput="this.value=this.value.toUpperCase()">
             </div>
             <div>
-              <label class="required-label">Booking Class<span class="req-star">*</span></label>
+              <div class="field-row">
+                <label class="required-label">Booking Class<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-class"></span>
+              </div>
               <input type="text" id="f-seg${i}-class" placeholder="Y" maxlength="1" title="Fare class: Y/B/O=economy, C/J/R=business, F=first" oninput="this.value=this.value.toUpperCase(); validateRequired()">
             </div>
             <div>
-              <label class="required-label">Airline Code<span class="req-star">*</span></label>
+              <div class="field-row">
+                <label class="required-label">Airline Code<span class="req-star">*</span></label>
+                <span class="src-tag" id="src-seg${i}-carrier"></span>
+              </div>
               <input type="text" id="f-seg${i}-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase(); validateRequired()">
             </div>
           </div>
@@ -1275,17 +1379,103 @@ No explanation. No markdown. JSON only.` }
 
   renderSegmentFields(); // init
 
-  function populatePage2(d) {
-    // Handle flights array (new format)
+  // RENDER EXTRACTION SUMMARY — shows what each image contributed
+  function renderExtractionSummary(perImageResults) {
+    const container = document.getElementById('extractionSummary');
+    if (!perImageResults || perImageResults.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted); font-size:0.8rem;">No extraction data.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    perImageResults.forEach((r, i) => {
+      const imgNum = i + 1;
+      const fileName = state.uploadedFiles[i]?.name || `Image ${imgNum}`;
+      const thumbUrl = state.uploadedDataURLs[i] || '';
+      const imageType = (r.image_type || 'unknown').replace(/_/g, ' ');
+
+      let html = `<div class="extract-card">`;
+      html += `<div class="extract-card-header">`;
+      if (thumbUrl) html += `<img class="extract-card-thumb" src="${thumbUrl}" alt="${fileName}">`;
+      html += `<div><div class="img-label">img_${imgNum}: ${fileName}</div>`;
+      html += `<span class="img-type">${imageType}</span></div></div>`;
+
+      // Show flights from this image
+      if (r.flights && r.flights.length > 0) {
+        r.flights.forEach((f, fi) => {
+          if (r.flights.length > 1) html += `<div class="extract-seg-divider">Flight ${fi + 1}</div>`;
+          const fields = [
+            ['Route', (f.origin || '???') + ' → ' + (f.destination || '???')],
+            ['Date', f.date],
+            ['Flight #', f.flight_number],
+            ['Carrier', f.carrier],
+            ['Class', f.booking_class],
+            ['Cabin', f.cabin],
+            ['Depart', f.departure_time],
+            ['Arrive', f.arrival_time]
+          ];
+          fields.forEach(([lbl, val]) => {
+            if (val) {
+              html += `<div class="extract-data-row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
+            }
+          });
+        });
+      }
+
+      // Show passengers from this image
+      if (r.passengers && r.passengers.length > 0) {
+        r.passengers.forEach(p => {
+          if (p.last || p.first) {
+            const name = [(p.title || ''), (p.first || ''), (p.last || '')].filter(Boolean).join(' ');
+            html += `<div class="extract-data-row"><span class="lbl">Passenger</span><span class="val">${name}</span></div>`;
+          }
+        });
+      }
+
+      // Show contact from this image
+      if (r.phone) html += `<div class="extract-data-row"><span class="lbl">Phone</span><span class="val">${r.phone}</span></div>`;
+      if (r.email) html += `<div class="extract-data-row"><span class="lbl">Email</span><span class="val">${r.email}</span></div>`;
+
+      // If nothing useful found
+      const hasData = (r.flights?.length > 0 && r.flights.some(f => f.origin || f.flight_number)) ||
+                      (r.passengers?.length > 0 && r.passengers.some(p => p.last || p.first)) ||
+                      r.phone || r.email;
+      if (!hasData) {
+        html += `<div class="extract-data-row"><span class="val null-val">No extractable data found</span></div>`;
+      }
+
+      html += `</div>`;
+      container.innerHTML += html;
+    });
+  }
+
+  // SET SOURCE BADGE on a field
+  function setSrcBadge(id, source, confidence) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!source || source === 'unknown') { el.textContent = ''; el.className = 'src-tag'; return; }
+    const cls = source.startsWith('img') ? 'img' : source === 'text' ? 'txt' : 'combined';
+    const confDot = confidence === 'high' ? '●' : confidence === 'medium' ? '◐' : '○';
+    el.textContent = source + ' ' + confDot;
+    el.className = `src-tag ${cls}`;
+  }
+
+  function populatePage2(d, perImageResults) {
+    // Render extraction summary
+    if (perImageResults) {
+      renderExtractionSummary(perImageResults);
+    }
+
+    // Handle flights array
     if (d.flights?.length) {
       document.getElementById('f-segcount').value = Math.min(d.flights.length, 4);
       renderSegmentFields();
       d.flights.forEach((f, i) => {
-        if (i >= 4) return; // max 4 segments
+        if (i >= 4) return;
         const setField = (suffix, field) => {
           const el = document.getElementById(`f-seg${i}-${suffix}`);
           if (!el || !field || !field.value) return;
           el.value = field.value.toUpperCase();
+          setSrcBadge(`src-seg${i}-${suffix}`, field.source, field.confidence);
         };
         setField('origin', f.origin);
         setField('dest', f.destination);
@@ -1294,21 +1484,6 @@ No explanation. No markdown. JSON only.` }
         setField('class', f.booking_class);
         setField('carrier', f.carrier);
       });
-    } else if (d.origin) {
-      // Legacy flat format fallback
-      document.getElementById('f-segcount').value = 1;
-      renderSegmentFields();
-      const setField = (suffix, field) => {
-        const el = document.getElementById(`f-seg0-${suffix}`);
-        if (!el || !field || !field.value) return;
-        el.value = field.value.toUpperCase();
-      };
-      setField('origin', d.origin);
-      setField('dest', d.destination);
-      setField('date', d.date);
-      setField('flightnum', d.flight_number);
-      setField('class', d.cabin);
-      setField('carrier', d.carrier);
     }
 
     // Shared fields
@@ -1341,19 +1516,21 @@ No explanation. No markdown. JSON only.` }
     const rcvd = document.getElementById('f-rcvdfrom');
     if (d.passengers?.[0]?.last?.value) rcvd.value = d.passengers[0].last.value.toUpperCase();
 
-    // Confidence summary
+    // Confidence warnings
     const lowFields = [];
     if (d.flights?.length) {
       d.flights.forEach((f, i) => {
         ['origin','destination','date','booking_class','carrier'].forEach(k => {
-          if (f[k]?.confidence === 'low') lowFields.push(`seg${i+1} ${k}`);
+          if (f[k]?.confidence === 'low' && f[k]?.value) lowFields.push(`seg${i+1} ${k}`);
         });
       });
     }
     if (lowFields.length) {
       const note = document.getElementById('confidenceNote');
       note.style.display = 'block';
-      note.textContent = `⚠ Low confidence on: ${lowFields.join(', ')} — please verify manually.`;
+      note.textContent = `Low confidence on: ${lowFields.join(', ')} — please verify manually.`;
+    } else {
+      document.getElementById('confidenceNote').style.display = 'none';
     }
 
     validateRequired();

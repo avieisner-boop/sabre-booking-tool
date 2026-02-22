@@ -930,6 +930,221 @@ Example:
     renderFilePreviews();
   }
 
+  // EXTRACT DATA FROM A SINGLE IMAGE
+  async function extractFromImage(apiKey, base64, mtype, imgLabel) {
+    const content = [
+      {
+        type: 'image',
+        source: { type: 'base64', media_type: mtype, data: base64 }
+      },
+      { type: 'text', text: `Extract ALL travel booking data visible in this single image (${imgLabel}).
+
+Identify the image type and extract accordingly:
+- PASSPORT / ID CARD: passenger last name, first name, title.
+- FLIGHT DETAIL PAGE (airline app/website): flight number (numeric only, e.g. "142"), carrier (2-letter IATA code, e.g. "AA"), origin airport (3-letter IATA code), destination airport (3-letter IATA code), departure time, arrival time, cabin class (economy/business/first), booking code letter (O, R, B, K, J, Y, etc.), date if shown.
+- TRIP SUMMARY / ITINERARY: number of segments, for EACH segment: origin city, destination city, date (DDMON format like 16MAR), departure time, arrival time, cabin class. A round trip has 2 segments.
+- BOOKING CONFIRMATION: all flight details plus passenger names, contact info.
+- EMAIL / TEXT: phone, email, special requests, or any of the above.
+
+For airline app screenshots: the city at the TOP or LEFT of an arrow = ORIGIN (departure), city at BOTTOM or RIGHT = DESTINATION (arrival).
+
+ONLY extract what you can ACTUALLY READ. Use null for anything not visible.
+
+Return ONLY valid JSON:
+{
+  "image_type": "flight_detail|trip_summary|passport|booking_confirmation|other",
+  "flights": [
+    {
+      "origin": "XXX or null",
+      "destination": "YYY or null",
+      "date": "DDMON or null",
+      "flight_number": "numeric only or null",
+      "carrier": "XX or null",
+      "booking_class": "single letter or null",
+      "departure_time": "HH:MM or null",
+      "arrival_time": "HH:MM or null",
+      "cabin": "economy|business|first|premium_economy|null"
+    }
+  ],
+  "passengers": [{"last": "NAME or null", "first": "NAME or null", "title": "MR/MRS/MS or null"}],
+  "phone": null,
+  "email": null,
+  "frequent_flyer": null
+}
+No explanation. No markdown. JSON only.` }
+    ];
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        temperature: 0,
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `API error for ${imgLabel}`);
+    }
+
+    const data = await res.json();
+    let raw = data.content[0].text.trim();
+    raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    console.log(`[PARSE] ${imgLabel} raw:`, raw);
+    return JSON.parse(raw);
+  }
+
+  // COMBINE PER-IMAGE RESULTS INTO FINAL DATA
+  function combineImageResults(results) {
+    console.log('[COMBINE] Input results:', JSON.stringify(results, null, 2));
+
+    let tripSummary = null;
+    const flightDetails = [];
+    const passengers = [];
+    let phone = null, email = null, frequentFlyer = null;
+
+    // Step 1: Categorize each image result
+    results.forEach((r, i) => {
+      const src = `img_${i + 1}`;
+
+      // Collect passengers from any image
+      if (r.passengers) {
+        r.passengers.forEach(p => {
+          if (p.last || p.first) passengers.push({ ...p, source: src });
+        });
+      }
+
+      // Collect contact info from any image
+      if (r.phone && !phone) phone = { value: r.phone, source: src };
+      if (r.email && !email) email = { value: r.email, source: src };
+      if (r.frequent_flyer && !frequentFlyer) frequentFlyer = { value: r.frequent_flyer, source: src };
+
+      // Categorize by image type
+      if (r.image_type === 'trip_summary') {
+        tripSummary = { ...r, source: src };
+      } else if (r.image_type === 'flight_detail' || r.image_type === 'booking_confirmation') {
+        if (r.flights) {
+          r.flights.forEach(f => flightDetails.push({ ...f, source: src }));
+        }
+      } else if (r.flights && r.flights.length > 0) {
+        // Any other type with flights
+        r.flights.forEach(f => {
+          if (f.flight_number || f.origin) flightDetails.push({ ...f, source: src });
+        });
+      }
+    });
+
+    console.log('[COMBINE] Trip summary:', tripSummary ? 'found' : 'none');
+    console.log('[COMBINE] Flight details:', flightDetails.length);
+    console.log('[COMBINE] Passengers:', passengers.length);
+
+    // Step 2: Build flight segments
+    let flights = [];
+
+    if (tripSummary && tripSummary.flights && tripSummary.flights.length > 0) {
+      // Use trip summary as the skeleton — it defines the segment count and order
+      flights = tripSummary.flights.map((ts, i) => {
+        const seg = {
+          origin: { value: ts.origin, source: tripSummary.source, confidence: ts.origin ? 'high' : 'low' },
+          destination: { value: ts.destination, source: tripSummary.source, confidence: ts.destination ? 'high' : 'low' },
+          date: { value: ts.date, source: tripSummary.source, confidence: ts.date ? 'high' : 'low' },
+          flight_number: { value: ts.flight_number || null, source: tripSummary.source, confidence: ts.flight_number ? 'high' : 'low' },
+          carrier: { value: ts.carrier || null, source: tripSummary.source, confidence: ts.carrier ? 'high' : 'low' },
+          booking_class: { value: ts.booking_class || null, source: tripSummary.source, confidence: ts.booking_class ? 'high' : 'low' }
+        };
+
+        // Try to match a flight detail page to this trip segment by route or times
+        const match = flightDetails.find(fd => {
+          // Match by origin+destination
+          if (fd.origin && ts.origin && fd.destination && ts.destination) {
+            return fd.origin === ts.origin && fd.destination === ts.destination;
+          }
+          // Match by departure time
+          if (fd.departure_time && ts.departure_time) {
+            return fd.departure_time === ts.departure_time;
+          }
+          return false;
+        });
+
+        if (match) {
+          // Fill in missing fields from the detail page
+          if (match.flight_number) { seg.flight_number = { value: match.flight_number, source: match.source, confidence: 'high' }; }
+          if (match.carrier) { seg.carrier = { value: match.carrier, source: match.source, confidence: 'high' }; }
+          if (match.booking_class) { seg.booking_class = { value: match.booking_class, source: match.source, confidence: 'high' }; }
+          if (match.origin && !seg.origin.value) { seg.origin = { value: match.origin, source: match.source, confidence: 'high' }; }
+          if (match.destination && !seg.destination.value) { seg.destination = { value: match.destination, source: match.source, confidence: 'high' }; }
+          if (match.date && !seg.date.value) { seg.date = { value: match.date, source: match.source, confidence: 'high' }; }
+          // Remove matched detail so it's not reused
+          const idx = flightDetails.indexOf(match);
+          if (idx > -1) flightDetails.splice(idx, 1);
+        }
+
+        return seg;
+      });
+    }
+
+    // If no trip summary, use flight detail pages directly as segments
+    if (flights.length === 0 && flightDetails.length > 0) {
+      flights = flightDetails.map(fd => ({
+        origin: { value: fd.origin || null, source: fd.source, confidence: fd.origin ? 'high' : 'low' },
+        destination: { value: fd.destination || null, source: fd.source, confidence: fd.destination ? 'high' : 'low' },
+        date: { value: fd.date || null, source: fd.source, confidence: fd.date ? 'high' : 'low' },
+        flight_number: { value: fd.flight_number || null, source: fd.source, confidence: fd.flight_number ? 'high' : 'low' },
+        carrier: { value: fd.carrier || null, source: fd.source, confidence: fd.carrier ? 'high' : 'low' },
+        booking_class: { value: fd.booking_class || null, source: fd.source, confidence: fd.booking_class ? 'high' : 'low' }
+      }));
+    }
+
+    // Any unmatched flight details — append as extra segments
+    if (flightDetails.length > 0 && tripSummary) {
+      flightDetails.forEach(fd => {
+        flights.push({
+          origin: { value: fd.origin || null, source: fd.source, confidence: fd.origin ? 'high' : 'low' },
+          destination: { value: fd.destination || null, source: fd.source, confidence: fd.destination ? 'high' : 'low' },
+          date: { value: fd.date || null, source: fd.source, confidence: fd.date ? 'high' : 'low' },
+          flight_number: { value: fd.flight_number || null, source: fd.source, confidence: fd.flight_number ? 'high' : 'low' },
+          carrier: { value: fd.carrier || null, source: fd.source, confidence: fd.carrier ? 'high' : 'low' },
+          booking_class: { value: fd.booking_class || null, source: fd.source, confidence: fd.booking_class ? 'high' : 'low' }
+        });
+      });
+    }
+
+    // Step 3: Sort by date (outbound first)
+    const monthOrder = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+    flights.sort((a, b) => {
+      const da = a.date?.value, db = b.date?.value;
+      if (!da || !db) return 0;
+      const dayA = parseInt(da.slice(0, 2)), monA = monthOrder[da.slice(2)] || 0;
+      const dayB = parseInt(db.slice(0, 2)), monB = monthOrder[db.slice(2)] || 0;
+      return (monA * 100 + dayA) - (monB * 100 + dayB);
+    });
+
+    // Build final result
+    const combined = {
+      flights,
+      passengers: passengers.map(p => ({
+        last: { value: p.last ? p.last.toUpperCase() : null, source: p.source, confidence: p.last ? 'high' : 'low' },
+        first: { value: p.first ? p.first.toUpperCase() : null, source: p.source, confidence: p.first ? 'high' : 'low' },
+        title: { value: p.title ? p.title.toUpperCase() : null, source: p.source, confidence: p.title ? 'medium' : 'low' }
+      })),
+      phone: phone ? { value: phone.value, source: phone.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' },
+      pax_phone: { value: null, source: 'unknown', confidence: 'low' },
+      email: email ? { value: email.value, source: email.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' },
+      frequent_flyer: frequentFlyer ? { value: frequentFlyer.value, source: frequentFlyer.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' }
+    };
+
+    console.log('[COMBINE] Final result:', JSON.stringify(combined, null, 2));
+    return combined;
+  }
+
   // PARSE INPUTS
   async function parseInputs() {
     const apiKey = document.getElementById('apiKey').value.trim();
@@ -943,143 +1158,57 @@ Example:
 
     state.apiKey = apiKey;
     state.zapierUrl = document.getElementById('zapierUrl').value.trim();
-    showStatus('status1', 'loading', 'Parsing flight details with Claude AI...');
+    const totalImages = state.uploadedDataURLs.length;
+    showStatus('status1', 'loading', `Parsing ${totalImages} image(s) — extracting data from each...`);
     document.getElementById('parseBtn').disabled = true;
 
     try {
-      const content = [];
-
-      // Add images
-      state.uploadedDataURLs.forEach((dataURL, i) => {
+      // Step 1: Extract from each image in parallel
+      const imagePromises = state.uploadedDataURLs.map((dataURL, i) => {
         const base64 = dataURL.split(',')[1];
         const mtype = state.uploadedFiles[i].type || 'image/jpeg';
-        content.push({
-          type: 'image',
-          source: { type: 'base64', media_type: mtype, data: base64 }
-        });
-        content.push({ type: 'text', text: `The above is image file: img_${i+1} (${state.uploadedFiles[i].name})` });
+        const label = `img_${i + 1} (${state.uploadedFiles[i].name})`;
+        return extractFromImage(apiKey, base64, mtype, label);
       });
 
-      // Add text
+      // Also handle pasted text as a "virtual image"
       if (textVal) {
-        content.push({ type: 'text', text: `TEXT INPUT:\n${textVal}` });
+        imagePromises.push((async () => {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 1000,
+              temperature: 0,
+              messages: [{ role: 'user', content: `Extract all travel booking data from this text. Return ONLY valid JSON with the same structure as a flight/passenger extraction: {"image_type":"other","flights":[{"origin":"XXX","destination":"YYY","date":"DDMON","flight_number":"000","carrier":"XX","booking_class":"X","departure_time":null,"arrival_time":null,"cabin":null}],"passengers":[{"last":null,"first":null,"title":null}],"phone":null,"email":null,"frequent_flyer":null}. Use null for missing fields. JSON only.\n\nText:\n${textVal}` }]
+            })
+          });
+          if (!res.ok) throw new Error('Text parse failed');
+          const data = await res.json();
+          let raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          console.log('[PARSE] text raw:', raw);
+          return JSON.parse(raw);
+        })());
       }
 
-      content.push({ type: 'text', text: `You are a travel booking assistant extracting flight data from ${state.uploadedDataURLs.length} image(s)${textVal ? ' and pasted text' : ''}.
+      showStatus('status1', 'loading', `Parsing ${totalImages} image(s) — waiting for all extractions...`);
+      const results = await Promise.all(imagePromises);
+      console.log('[PARSE] All image results:', results);
 
-STEP 1 — EXTRACT DATA FROM EACH IMAGE INDEPENDENTLY:
-Go through EVERY image one by one. For each image, identify what type it is and extract ALL data visible in that image:
-
-- PASSPORT / ID CARD: Extract passenger last name, first name, title.
-- FLIGHT DETAIL PAGE (airline app/website): Extract the flight number, carrier, route (origin city/airport → destination city/airport), departure/arrival times, cabin/fare class, and booking code. Each detail page typically shows ONE specific flight.
-- TRIP SUMMARY / ITINERARY: Shows the overall trip structure — how many segments, which cities, which dates, departure vs return. This tells you the TOTAL number of flight segments and their ORDER.
-- FLIGHT SEARCH RESULTS / AVAILABILITY: Look for the selected/highlighted flight.
-- BOOKING CONFIRMATION: Extract all flight details plus passenger names, contact info.
-- EMAIL / TEXT: May contain any of the above plus phone, email, special requests.
-
-STEP 2 — COMBINE DATA ACROSS ALL IMAGES:
-After extracting from each image, MERGE the data to build complete flight segments:
-- A trip summary tells you HOW MANY segments there are and their DATES and CITIES.
-- Flight detail pages fill in the FLIGHT NUMBERS, BOOKING CODES, and CARRIERS.
-- Match detail pages to trip summary segments by comparing routes and times.
-- If image A shows "New York to London, March 16" and image B shows "JFK → LHR, flight 142, booking code O", these are the SAME segment — combine them.
-- If the trip shows 2 segments (depart + return), you MUST output 2 flight entries, not 1.
-- Passenger info may come from a completely different image (e.g., a passport).
-
-STEP 3 — ORDER THE FLIGHTS:
-- The "flights" array MUST be in travel order: outbound/depart FIRST (index 0), return SECOND (index 1).
-- Use dates to confirm: earlier date = outbound.
-
-CRITICAL RULES:
-- ONLY include data you can ACTUALLY READ from the images. NEVER guess or invent values.
-- If a field is not visible in ANY image, set its value to null.
-- Do NOT ignore any uploaded file — every image may contribute different pieces of data.
-- Read airport codes, city names, flight numbers, and dates EXACTLY as shown.
-- For airline app screenshots: departure city (top/left of arrow) = origin, arrival city (bottom/right) = destination.
-- If 2 flight detail pages are uploaded, that likely means 2 separate flight segments.
-- If a trip summary shows a round trip (depart + return), there MUST be 2 entries in the flights array.
-
-Return ONLY a valid JSON object. For each field include "source" (which image: "img_1", "img_2", "img_3", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
-
-Example structure (use ACTUAL values from the images, NOT these placeholders):
-{
-  "flights": [
-    {
-      "origin": {"value": "XXX", "source": "img_1", "confidence": "high"},
-      "destination": {"value": "YYY", "source": "img_1", "confidence": "high"},
-      "date": {"value": "01JAN", "source": "img_2", "confidence": "high"},
-      "flight_number": {"value": "000", "source": "img_1", "confidence": "high"},
-      "carrier": {"value": "XX", "source": "img_1", "confidence": "high"},
-      "booking_class": {"value": "X", "source": "img_1", "confidence": "high"}
-    },
-    {
-      "origin": {"value": "YYY", "source": "img_3", "confidence": "high"},
-      "destination": {"value": "XXX", "source": "img_3", "confidence": "high"},
-      "date": {"value": "08JAN", "source": "img_2", "confidence": "high"},
-      "flight_number": {"value": "001", "source": "img_3", "confidence": "high"},
-      "carrier": {"value": "XX", "source": "img_3", "confidence": "high"},
-      "booking_class": {"value": "Z", "source": "img_3", "confidence": "high"}
-    }
-  ],
-  "passengers": [
-    {
-      "last": {"value": "LASTNAME", "source": "img_2", "confidence": "high"},
-      "first": {"value": "FIRSTNAME", "source": "img_2", "confidence": "high"},
-      "title": {"value": "MR", "source": "img_2", "confidence": "medium"}
-    }
-  ],
-  "phone": {"value": null, "source": "unknown", "confidence": "low"},
-  "pax_phone": {"value": null, "source": "unknown", "confidence": "low"},
-  "email": {"value": null, "source": "unknown", "confidence": "low"},
-  "frequent_flyer": {"value": null, "source": "unknown", "confidence": "low"}
-}
-
-IMPORTANT: The example above shows 2 flight segments because data came from multiple images. Notice how "source" fields reference DIFFERENT images — date may come from one image, flight number from another. This is expected. Combine data across images.
-
-Rules:
-- "flights" array: one entry per flight segment. If a trip summary or multiple detail pages show N segments, include N entries.
-- booking_class: use the specific fare class letter if visible (O, R, B, K, J, etc). If only cabin type is shown, use Y=economy, C=business, F=first, W=premium economy. If no fare class is visible at all, use null.
-- flight_number: ONLY the numeric part (e.g. "550" not "UA550"). Carrier goes in "carrier" field.
-- date: DDMON format (e.g. 03APR). Read the exact date from the image.
-- Passenger names from IDs should be UPPERCASE.
-- carrier: 2-letter IATA airline code (AA, UA, DL, BA, etc).
-- origin/destination: 3-letter IATA airport code. Read these directly from the image — do NOT guess or assume.
-- IMPORTANT: Every value you return MUST come from something you can read in the provided images or text. If you cannot read it clearly, use null.
-Return ONLY the JSON. No explanation. No markdown.` });
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-opus-4-6',
-          max_tokens: 1500,
-          temperature: 0,
-          messages: [{ role: 'user', content }]
-        })
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || 'API error');
-      }
-
-      const data = await res.json();
-      let raw = data.content[0].text.trim();
-      // Strip markdown if present
-      raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      console.log('[PARSE DEBUG] Raw AI response:', raw);
-      const parsed = JSON.parse(raw);
-      console.log('[PARSE DEBUG] Parsed flights:', JSON.stringify(parsed.flights, null, 2));
+      // Step 2: Combine results in code
+      showStatus('status1', 'loading', 'Combining data from all images...');
+      const parsed = combineImageResults(results);
       state.parsedData = parsed;
 
       populatePage2(parsed);
       goToPage(2);
-      showStatus('status1', 'success', '');
+      showStatus('status1', 'success', `Parsed ${totalImages} image(s) — ${parsed.flights.length} flight segment(s) found.`);
       document.getElementById('parseBtn').disabled = false;
 
       // Send parsed data to Zapier

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sabre GDS Booking Tool</title>
+<title>Sabre GDS Booking Tool v9</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -29,7 +29,7 @@
     color: var(--text);
     font-family: var(--font-display);
     min-height: 100vh;
-    background-image: 
+    background-image:
       radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.05) 0%, transparent 50%),
       radial-gradient(ellipse at 80% 20%, rgba(255,107,53,0.05) 0%, transparent 50%);
   }
@@ -47,92 +47,25 @@
     z-index: 100;
   }
 
-  .logo {
-    font-size: 1.1rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--accent);
-  }
-
+  .logo { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--accent); }
   .logo span { color: var(--accent2); }
 
-  .step-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-  }
-
-  .step-dot {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    color: var(--muted);
-    transition: all 0.3s;
-  }
-
-  .step-dot.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    box-shadow: 0 0 12px rgba(0,212,255,0.3);
-  }
-
-  .step-dot.done {
-    background: var(--green);
-    border-color: var(--green);
-    color: var(--bg);
-  }
-
-  .step-line {
-    width: 30px;
-    height: 1px;
-    background: var(--border);
-  }
+  .step-indicator { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; font-family: var(--font-mono); font-size: 0.75rem; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--muted); transition: all 0.3s; }
+  .step-dot.active { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 12px rgba(0,212,255,0.3); }
+  .step-dot.done { background: var(--green); border-color: var(--green); color: var(--bg); }
+  .step-line { width: 30px; height: 1px; background: var(--border); }
 
   .page { display: none; max-width: 860px; margin: 0 auto; padding: 2.5rem 2rem; }
   .page.active { display: block; }
+  .page-title { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.4rem; }
+  .page-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; font-family: var(--font-mono); }
 
-  .page-title {
-    font-size: 1.8rem;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    margin-bottom: 0.4rem;
-  }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; font-family: var(--font-mono); }
 
-  .page-sub {
-    color: var(--muted);
-    font-size: 0.9rem;
-    margin-bottom: 2rem;
-    font-family: var(--font-mono);
-  }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .card-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 1rem;
-    font-family: var(--font-mono);
-  }
-
+  /* Upload zone — file input overlays the entire zone */
   .upload-zone {
-    display: block;
     border: 2px dashed var(--border);
     border-radius: 8px;
     padding: 2.5rem;
@@ -140,533 +73,90 @@
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
-    /* Override generic label styles */
-    font-size: inherit;
-    font-weight: normal;
-    letter-spacing: normal;
-    text-transform: none;
-    color: var(--text);
-    margin-bottom: 0;
-    font-family: var(--font-display);
+    overflow: hidden;
   }
-
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(0,212,255,0.04);
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: rgba(0,212,255,0.04); }
+  .upload-zone .file-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 5;
+    width: 100%;
+    height: 100%;
   }
-
-  .upload-zone input[type="file"] {
-    display: none;
-  }
-
-  .upload-icon {
-    font-size: 2rem;
-    margin-bottom: 0.75rem;
-    display: block;
-  }
-
-  .upload-label {
-    font-size: 0.85rem;
-    color: var(--muted);
-  }
-
+  .upload-icon { font-size: 2rem; margin-bottom: 0.75rem; display: block; }
+  .upload-label { font-size: 0.85rem; color: var(--muted); }
   .upload-label strong { color: var(--accent); }
 
-  .file-previews {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
-
-  .file-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.4rem 0.75rem;
-    font-size: 0.75rem;
-    font-family: var(--font-mono);
-  }
-
-  .file-chip .thumb {
-    width: 28px;
-    height: 28px;
-    object-fit: cover;
-    border-radius: 3px;
-  }
-
-  .file-chip .remove {
-    cursor: pointer;
-    color: var(--muted);
-    margin-left: 0.25rem;
-    transition: color 0.2s;
-  }
+  .file-previews { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+  .file-chip { display: flex; align-items: center; gap: 0.5rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-family: var(--font-mono); }
+  .file-chip .thumb { width: 28px; height: 28px; object-fit: cover; border-radius: 3px; }
+  .file-chip .remove { cursor: pointer; color: var(--muted); margin-left: 0.25rem; transition: color 0.2s; }
   .file-chip .remove:hover { color: var(--red); }
 
-  label {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.4rem;
-    font-family: var(--font-mono);
-  }
+  .form-label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; font-family: var(--font-mono); }
 
   textarea, input[type="text"], input[type="email"], input[type="tel"], select {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    padding: 0.75rem 1rem;
-    outline: none;
-    transition: border-color 0.2s;
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: var(--font-mono); font-size: 0.85rem; padding: 0.75rem 1rem;
+    outline: none; transition: border-color 0.2s;
   }
-
-  textarea:focus, input:focus, select:focus {
-    border-color: var(--accent);
-  }
-
+  textarea:focus, input:focus, select:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 120px; }
-
   select option { background: var(--surface2); }
 
-  .api-key-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-    margin-bottom: 1.5rem;
-  }
-
+  .api-key-row { display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; }
   .api-key-row > div { flex: 1; }
 
-  .divider {
-    text-align: center;
-    margin: 1.5rem 0;
-    position: relative;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--muted);
-  }
-
-  .divider::before, .divider::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 42%;
-    height: 1px;
-    background: var(--border);
-  }
-
+  .divider { text-align: center; margin: 1.5rem 0; position: relative; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+  .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: var(--border); }
   .divider::before { left: 0; }
   .divider::after { right: 0; }
 
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
-    letter-spacing: 0.02em;
-  }
+  .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 8px; font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; cursor: pointer; border: none; transition: all 0.2s; letter-spacing: 0.02em; }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: #33ddff; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,255,0.25); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-green { background: var(--green); color: var(--bg); }
 
-  .btn-primary {
-    background: var(--accent);
-    color: var(--bg);
-  }
-
-  .btn-primary:hover {
-    background: #33ddff;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(0,212,255,0.25);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  .btn-secondary {
-    background: transparent;
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-
-  .btn-secondary:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .btn-orange {
-    background: var(--accent2);
-    color: white;
-  }
-
-  .btn-orange:hover {
-    background: #ff8a5b;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(255,107,53,0.25);
-  }
-
-  .btn-green {
-    background: var(--green);
-    color: var(--bg);
-  }
-
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 1.25rem;
-    border-radius: 8px;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .status-bar.loading {
-    background: rgba(0,212,255,0.08);
-    border: 1px solid rgba(0,212,255,0.2);
-    color: var(--accent);
-  }
-
-  .status-bar.error {
-    background: rgba(255,51,102,0.08);
-    border: 1px solid rgba(255,51,102,0.2);
-    color: var(--red);
-  }
-
-  .status-bar.success {
-    background: rgba(0,255,136,0.08);
-    border: 1px solid rgba(0,255,136,0.2);
-    color: var(--green);
-  }
-
-  .spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(0,212,255,0.2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-
+  .status-bar { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 1.5rem; word-break: break-word; }
+  .status-bar.loading { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); color: var(--accent); }
+  .status-bar.error { background: rgba(255,51,102,0.08); border: 1px solid rgba(255,51,102,0.2); color: var(--red); }
+  .status-bar.success { background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); color: var(--green); }
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(0,212,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* PAGE 2 FIELDS */
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .form-grid .full { grid-column: 1 / -1; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 
-  .field-wrap { position: relative; }
+  .field-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
 
-  .field-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.35rem;
-  }
+  .src-tag { display: inline-block; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.6rem; font-weight: 700; font-family: var(--font-mono); margin-left: 0.35rem; vertical-align: middle; }
+  .src-tag.img { background: rgba(0,212,255,0.15); color: var(--accent); }
 
-  .source-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 4px;
-    font-size: 0.62rem;
-    font-family: var(--font-mono);
-    font-weight: 700;
-  }
-
-  .source-badge.img { background: rgba(0,212,255,0.15); color: var(--accent); }
-  .source-badge.txt { background: rgba(255,107,53,0.15); color: var(--accent2); }
-  .source-badge.manual { background: rgba(100,116,139,0.15); color: var(--muted); }
-
-  .confidence-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .conf-high { background: var(--green); }
-  .conf-med { background: var(--yellow); }
-  .conf-low { background: var(--red); }
-
-  .quickview-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 0.9rem;
-    padding: 0;
-    transition: color 0.2s;
-    margin-left: auto;
-  }
-
-  .quickview-btn:hover { color: var(--accent); }
-
-  input.required-empty, select.required-empty, textarea.required-empty {
-    border-color: var(--red) !important;
-    box-shadow: 0 0 0 2px rgba(255,51,102,0.15);
-  }
-
-  .required-label { color: var(--red) !important; }
-
+  input.required-empty, select.required-empty { border-color: var(--red) !important; box-shadow: 0 0 0 2px rgba(255,51,102,0.15); }
   .req-star { color: var(--red); margin-left: 2px; }
 
-  /* OUTPUT SECTION */
-  .sabre-output {
-    background: #050a14;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.25rem;
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
-    line-height: 1.7;
-    color: var(--green);
-    white-space: pre;
-    overflow-x: auto;
-    position: relative;
-    min-height: 80px;
-  }
-
-  .sabre-output .placeholder { color: var(--muted); font-style: italic; }
-
-  .copy-btn {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    padding: 0.3rem 0.65rem;
-    font-size: 0.7rem;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    color: var(--muted);
-    cursor: pointer;
-    font-family: var(--font-mono);
-    transition: all 0.2s;
-  }
-
+  .sabre-output { background: #050a14; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.7; color: var(--green); white-space: pre-wrap; overflow-x: auto; position: relative; min-height: 80px; }
+  .copy-btn { position: absolute; top: 0.75rem; right: 0.75rem; padding: 0.3rem 0.65rem; font-size: 0.7rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; color: var(--muted); cursor: pointer; font-family: var(--font-mono); transition: all 0.2s; }
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
   .copy-btn.copied { border-color: var(--green); color: var(--green); }
 
-  /* MODAL */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
+  .pax-section { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; }
+  .pax-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 0.75rem; }
+  .actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+  .note-box { background: rgba(255,215,0,0.06); border: 1px solid rgba(255,215,0,0.2); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.8rem; color: var(--yellow); font-family: var(--font-mono); margin-bottom: 1rem; }
+  .stage-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+  .stage-label span { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); }
 
-  .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.5rem;
-    max-width: 600px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  .modal-title {
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-family: var(--font-mono);
-    margin-bottom: 1rem;
-  }
-
-  .modal img {
-    max-width: 100%;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-  }
-
-  .modal pre {
-    background: var(--surface2);
-    padding: 1rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    color: var(--text);
-    white-space: pre-wrap;
-    font-family: var(--font-mono);
-  }
-
-  .modal-close {
-    float: right;
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 1.2rem;
-    margin-top: -0.25rem;
-  }
-
-  .pax-section {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .pax-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--accent2);
-    font-family: var(--font-mono);
-    margin-bottom: 0.75rem;
-  }
-
-  .actions-row {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-top: 1.5rem;
-  }
-
-  .note-box {
-    background: rgba(255,215,0,0.06);
-    border: 1px solid rgba(255,215,0,0.2);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    font-size: 0.8rem;
-    color: var(--yellow);
-    font-family: var(--font-mono);
-    margin-bottom: 1rem;
-  }
-
-  /* Extraction summary panel */
-  .extract-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
-  }
-  .extract-card {
-    background: rgba(0,212,255,0.04);
-    border: 1px solid rgba(0,212,255,0.15);
-    border-radius: 8px;
-    padding: 0.85rem 1rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-  }
-  .extract-card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.6rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(0,212,255,0.1);
-  }
-  .extract-card-header .img-label {
-    font-weight: 700;
-    color: var(--accent);
-    font-size: 0.8rem;
-  }
-  .extract-card-header .img-type {
-    background: rgba(0,212,255,0.15);
-    color: var(--accent);
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-  .extract-card-thumb {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    object-fit: cover;
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .extract-data-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.2rem 0;
-    color: var(--text);
-  }
-  .extract-data-row .lbl { color: var(--muted); }
-  .extract-data-row .val { color: var(--green); font-weight: 600; }
-  .extract-data-row .val.null-val { color: var(--muted); font-style: italic; }
-  .extract-seg-divider {
-    border-top: 1px dashed rgba(255,255,255,0.08);
-    margin: 0.35rem 0;
-    font-size: 0.68rem;
-    color: var(--accent2);
-    padding-top: 0.25rem;
-    font-weight: 700;
-  }
-  .src-tag {
-    display: inline-block;
-    padding: 0.1rem 0.35rem;
-    border-radius: 3px;
-    font-size: 0.6rem;
-    font-weight: 700;
-    font-family: var(--font-mono);
-    margin-left: 0.35rem;
-    vertical-align: middle;
-  }
-  .src-tag.img { background: rgba(0,212,255,0.15); color: var(--accent); }
-  .src-tag.txt { background: rgba(255,107,53,0.15); color: var(--accent2); }
-  .src-tag.combined { background: rgba(0,255,136,0.12); color: var(--green); }
-
-  .stage-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.75rem;
-  }
-
-  .stage-label span {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-family: var(--font-mono);
-  }
-
-  .avail-input-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-  }
-
-  .avail-input-row > div:first-child { flex: 1; }
+  .file-count { display: inline-block; background: var(--accent); color: var(--bg); border-radius: 12px; padding: 0.15rem 0.6rem; font-size: 0.75rem; font-family: var(--font-mono); font-weight: 700; margin-left: 0.5rem; }
 
   @media (max-width: 600px) {
-    .form-grid { grid-template-columns: 1fr; }
+    .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
     .form-grid .full { grid-column: 1; }
     .api-key-row { flex-direction: column; }
   }
@@ -676,7 +166,7 @@
 
 <header>
   <div class="logo">SABRE<span>DESK</span></div>
-  <div style="font-size:0.72rem; color:var(--muted); font-family:var(--font-mono);">GDS Booking Assistant · POC v1</div>
+  <div style="font-size:0.72rem; color:var(--muted); font-family:var(--font-mono);">GDS Booking Assistant v9</div>
   <div class="step-indicator">
     <div class="step-dot active" id="dot1">1</div>
     <div class="step-line"></div>
@@ -686,84 +176,73 @@
   </div>
 </header>
 
-<!-- PAGE 1: Input -->
+<!-- ============ PAGE 1: INPUT ============ -->
 <div class="page active" id="page1">
-  <div class="page-title">Upload Flight Details <span style="font-size:0.55em; color:var(--muted); font-weight:400;">v8</span></div>
+  <div class="page-title">Upload Flight Details</div>
   <div class="page-sub">// Step 01 — Provide itinerary via image or text. AI will parse all fields.</div>
 
+  <!-- 1.1 CONFIG -->
   <div class="card">
-    <div class="card-title">⚙ Configuration</div>
+    <div class="card-title">1.1 Configuration</div>
     <div class="api-key-row">
       <div>
-        <label>Claude API Key <span style="color:var(--muted)">(stored in memory only)</span></label>
+        <span class="form-label">Claude API Key <span style="color:var(--muted)">(stored in memory only)</span></span>
         <input type="text" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
       </div>
     </div>
     <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono); margin-bottom:1.25rem;">
-      ⚠ Key is never stored or transmitted anywhere except directly to Anthropic API from your browser.
+      Key is never stored — sent directly to Anthropic API from your browser only.
     </div>
     <div class="api-key-row">
       <div>
-        <label>Zapier Webhook URL <span style="color:var(--muted)">(optional — auto-logs bookings)</span></label>
+        <span class="form-label">Zapier Webhook URL <span style="color:var(--muted)">(optional)</span></span>
         <input type="text" id="zapierUrl" placeholder="https://hooks.zapier.com/hooks/catch/..." autocomplete="off">
       </div>
     </div>
-    <div style="font-size:0.75rem; color:var(--muted); font-family:var(--font-mono);">
-      🔗 Connect to Google Sheets, Slack, email, or any Zapier app. Data is sent at each stage: parse, commands, and PNR confirmation.
-    </div>
   </div>
 
+  <!-- 1.2 IMAGE UPLOAD -->
   <div class="card">
-    <div class="card-title">📎 Image Upload</div>
-    <input type="file" id="fileInput" multiple accept="image/*,.pdf" style="display:none">
-    <label for="fileInput" class="upload-zone" id="uploadZone">
+    <div class="card-title">1.2 Image Upload <span id="fileCountBadge"></span></div>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" class="file-overlay" multiple accept="image/*,.pdf">
       <span class="upload-icon">🖼</span>
       <div class="upload-label">
-        <strong>Tap here</strong> to upload itinerary images<br>
-        <span style="font-size:0.75rem">JPG, PNG, PDF · Multiple files OK · You can upload multiple times</span>
+        <strong>Tap here</strong> to select itinerary images<br>
+        <span style="font-size:0.75rem">JPG, PNG, PDF — select multiple or upload in batches</span>
       </div>
-    </label>
+    </div>
     <div class="file-previews" id="filePreviews"></div>
   </div>
 
+  <!-- 1.3 TEXT INPUT -->
   <div class="divider">or paste text below</div>
-
   <div class="card">
-    <div class="card-title">📝 Text / Email Paste</div>
-    <label>Paste itinerary, email body, or flight details</label>
+    <div class="card-title">1.3 Text / Email Paste</div>
+    <span class="form-label">Paste itinerary, email body, or flight details</span>
     <textarea id="textInput" placeholder="Paste flight details here — e.g. copied from email, booking confirmation, screenshot text..."></textarea>
   </div>
 
+  <!-- 1.4 PROCESS -->
   <div id="status1"></div>
-
-  <button class="btn btn-primary" id="parseBtn" onclick="parseInputs()" style="width:100%; justify-content:center; font-size:1rem; padding:1rem;">
-    ⚡ Parse & Continue to Booking Form
+  <button class="btn btn-primary" id="parseBtn" type="button" style="width:100%; justify-content:center; font-size:1rem; padding:1rem;">
+    Parse & Continue to Booking Form
   </button>
 </div>
 
-<!-- PAGE 2: Booking Form -->
+<!-- ============ PAGE 2: BOOKING FORM ============ -->
 <div class="page" id="page2">
   <div class="page-title">Review & Complete Booking</div>
-  <div class="page-sub">// Step 02 — Data extracted from each image, then combined. Verify and edit below.</div>
+  <div class="page-sub">// Step 02 — Verify extracted data, fill missing fields, then generate commands.</div>
 
   <div class="note-box" id="confidenceNote" style="display:none"></div>
-
   <div id="status2"></div>
 
-  <!-- EXTRACTION SUMMARY — what was found in each image -->
+  <!-- 2.1 FLIGHT SEGMENTS -->
   <div class="card">
-    <div class="card-title">Extracted Data Per Image</div>
-    <div class="page-sub" style="margin-bottom:0.75rem">Each card shows what was read from that specific image. Combined result fills the form below.</div>
-    <div class="extract-summary" id="extractionSummary">
-      <div style="color:var(--muted); font-size:0.8rem;">No extraction data yet.</div>
-    </div>
-  </div>
-
-  <!-- COMBINED FLIGHT SEGMENTS -->
-  <div class="card">
-    <div class="card-title">Combined Flight Segments</div>
+    <div class="card-title">2.1 Flight Segments</div>
     <div>
-      <label>Number of Segments</label>
+      <span class="form-label">Number of Segments</span>
       <select id="f-segcount" onchange="renderSegmentFields()">
         <option value="1">1 — One Way</option>
         <option value="2" selected>2 — Round Trip</option>
@@ -774,1198 +253,805 @@
   </div>
   <div id="segmentFields"></div>
 
-  <!-- PASSENGERS -->
+  <!-- 2.2 CONTACT -->
   <div class="card">
-    <div class="card-title">Passengers</div>
-    <div>
-      <label>Number of Passengers</label>
-      <select id="f-paxcount" onchange="updatePaxFields()">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
-    </div>
-    <div id="paxFields" style="margin-top:1rem"></div>
-  </div>
-
-  <!-- CONTACT -->
-  <div class="card">
-    <div class="card-title">Contact Details</div>
+    <div class="card-title">2.2 Contact Details</div>
     <div class="form-grid">
       <div>
-        <div class="field-row">
-          <label class="required-label">Agency / Contact Phone<span class="req-star">*</span></label>
-          <span class="source-badge manual" id="src-phone"></span>
-        </div>
+        <span class="form-label">Agency Phone<span class="req-star">*</span></span>
         <input type="tel" id="f-phone" placeholder="2125551234" oninput="validateRequired()">
       </div>
       <div>
-        <div class="field-row">
-          <label>Passenger Phone</label>
-          <span class="source-badge manual" id="src-paxphone"></span>
-        </div>
+        <span class="form-label">Passenger Phone</span>
         <input type="tel" id="f-paxphone" placeholder="2125559876">
       </div>
       <div class="full">
-        <div class="field-row">
-          <label>Passenger Email</label>
-          <span class="source-badge manual" id="src-email"></span>
-        </div>
+        <span class="form-label">Email</span>
         <input type="email" id="f-email" placeholder="john@example.com">
       </div>
     </div>
   </div>
 
+  <!-- 2.3 PASSENGERS -->
+  <div class="card">
+    <div class="card-title">2.3 Passengers</div>
+    <div>
+      <span class="form-label">Number of Passengers</span>
+      <select id="f-paxcount" onchange="renderPaxFields()">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+      </select>
+    </div>
+    <div id="paxFields" style="margin-top:1rem"></div>
+  </div>
+
   <!-- BOOKING ADMIN -->
   <div class="card">
-    <div class="card-title">Booking Administration</div>
+    <div class="card-title">Booking Admin</div>
     <div class="form-grid">
       <div>
-        <div class="field-row">
-          <label class="required-label">Ticketing Deadline<span class="req-star">*</span></label>
-        </div>
+        <span class="form-label">Ticketing Deadline<span class="req-star">*</span></span>
         <input type="text" id="f-tickdate" placeholder="16MAR" oninput="validateRequired()">
       </div>
       <div>
-        <div class="field-row">
-          <label class="required-label">Received From<span class="req-star">*</span></label>
-        </div>
+        <span class="form-label">Received From<span class="req-star">*</span></span>
         <input type="text" id="f-rcvdfrom" placeholder="SMITH or Agent name" oninput="validateRequired()">
       </div>
       <div class="full">
-        <label>Special Service Requests (SSR)</label>
+        <span class="form-label">SSR (Special Requests)</span>
         <input type="text" id="f-ssr" placeholder="e.g. VGML, WCHR, UMNR">
       </div>
       <div class="full">
-        <label>Frequent Flyer (Pax 1)</label>
+        <span class="form-label">Frequent Flyer (Pax 1)</span>
         <input type="text" id="f-ff" placeholder="AA-1234567890">
       </div>
     </div>
   </div>
 
-  <!-- DEBUG PANEL -->
-  <div class="card" style="border-color: rgba(255,107,53,0.3);">
-    <div class="card-title" style="color:var(--accent2); cursor:pointer;" onclick="document.getElementById('debugContent').style.display = document.getElementById('debugContent').style.display === 'none' ? 'block' : 'none'">
-      Debug: Raw Extraction Data (click to toggle)
-    </div>
-    <div id="debugContent" style="display:none;">
-      <pre id="debugOutput" style="background:#050a14; border:1px solid var(--border); border-radius:6px; padding:0.75rem; font-size:0.7rem; color:var(--green); overflow-x:auto; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></pre>
-    </div>
-  </div>
-
   <div class="actions-row">
-    <button class="btn btn-secondary" onclick="goBack()">Back</button>
-    <button class="btn btn-primary" onclick="generateCommands()">Generate Sabre Commands</button>
+    <button class="btn btn-secondary" type="button" onclick="goToPage(1)">Back</button>
+    <button class="btn btn-primary" type="button" onclick="generateCommands()">Generate Sabre Commands</button>
   </div>
 </div>
 
-<!-- PAGE 3: Sabre Commands -->
+<!-- ============ PAGE 3: OUTPUT ============ -->
 <div class="page" id="page3">
   <div class="page-title">Sabre Command Output</div>
-  <div class="page-sub" id="page3sub">// Step 03 — Both commands generated. Review, copy, and paste into Sabre.</div>
+  <div class="page-sub">// Step 03 — Copy either command independently. Use placeholders for missing data.</div>
 
-  <div class="note-box" id="commandWarnings" style="display:none; color:var(--yellow);"></div>
-
+  <div class="note-box" id="commandWarnings" style="display:none"></div>
   <div id="status3"></div>
 
-  <!-- STAGE 1: SELL / AVAILABILITY -->
+  <!-- BOX 1: AVAILABILITY / SELL -->
   <div class="card">
     <div class="stage-label">
-      <span style="color:var(--accent)">STAGE 1 — Sell / Availability</span>
-      <span style="color:var(--muted)">Paste into Sabre terminal first</span>
+      <span id="stage1label" style="color:var(--accent)">STAGE 1 — Availability / Sell</span>
+      <span style="color:var(--muted)">Copy and paste into Sabre</span>
     </div>
-    <div class="sabre-output" id="stage1output">
-      <span class="placeholder">Command will appear here...</span>
-    </div>
+    <div class="sabre-output" id="stage1output"><span style="color:var(--muted)">Will be generated...</span></div>
   </div>
 
-  <!-- OPTIONAL: SABRE RESPONSE INPUT (only shown if availability check needed) -->
-  <div class="card" id="availResponseCard" style="display:none;">
+  <!-- AVAILABILITY FEEDBACK -->
+  <div class="card" id="availFeedbackCard" style="display:none">
     <div class="card-title">Paste Sabre Availability Response (optional)</div>
     <div style="font-size:0.78rem; color:var(--muted); margin-bottom:0.75rem; font-family:var(--font-mono)">
-      If you ran an availability check, paste the response here to auto-detect the line number.
+      Paste Sabre response here to auto-detect best line number.
     </div>
-    <textarea id="sabreResponse" placeholder="Paste Sabre availability response here..." style="min-height:80px"></textarea>
-    <div class="avail-input-row" style="margin-top:0.75rem">
-      <div>
-        <label>Line # to book</label>
+    <textarea id="sabreResponse" placeholder="Paste Sabre response..." style="min-height:80px"></textarea>
+    <div style="display:flex; gap:0.75rem; align-items:flex-end; margin-top:0.75rem">
+      <div style="flex:1">
+        <span class="form-label">Line # to book</span>
         <input type="text" id="f-linenum" placeholder="1">
       </div>
-      <button class="btn btn-secondary" onclick="parseAvailResponse()" style="white-space:nowrap">Parse Response</button>
+      <button class="btn btn-secondary" type="button" onclick="parseAvailResponse()">Parse Response</button>
     </div>
   </div>
 
-  <!-- STAGE 2: FULL PNR BLOCK -->
+  <!-- BOX 2: FULL PNR -->
   <div class="card">
     <div class="stage-label">
-      <span style="color:var(--accent2)">STAGE 2 — Full PNR Booking Block</span>
-      <span style="color:var(--muted)">Paste after sells confirmed</span>
+      <span id="stage2label" style="color:var(--accent2)">STAGE 2 — Full PNR Booking Block</span>
+      <span style="color:var(--muted)">Copy and paste into Sabre</span>
     </div>
-    <div class="sabre-output" id="stage2output">
-      <span class="placeholder">Command will appear here...</span>
-    </div>
+    <div class="sabre-output" id="stage2output"><span style="color:var(--muted)">Will be generated...</span></div>
   </div>
 
   <div class="actions-row">
-    <button class="btn btn-secondary" onclick="goToPage(2)">Edit Form</button>
-    <button class="btn btn-primary" onclick="generateCommands()">Regenerate Commands</button>
+    <button class="btn btn-secondary" type="button" onclick="goToPage(2)">Edit Form</button>
+    <button class="btn btn-primary" type="button" onclick="generateCommands()">Regenerate</button>
   </div>
 
-  <!-- PNR CAPTURE -->
+  <!-- PNR LOG -->
   <div class="card" style="margin-top:1.5rem; border-color: rgba(0,255,136,0.2)">
-    <div class="card-title" style="color:var(--green)">✅ Log PNR Confirmation</div>
+    <div class="card-title" style="color:var(--green)">Log PNR Confirmation</div>
     <div class="form-grid">
       <div>
-        <label>PNR Number (from Sabre)</label>
+        <span class="form-label">PNR Number</span>
         <input type="text" id="f-pnr" placeholder="ABC123" oninput="this.value=this.value.toUpperCase()">
       </div>
       <div style="display:flex; align-items:flex-end">
-        <button class="btn btn-green" onclick="logPNR()" style="width:100%">📋 Copy Log Entry</button>
+        <button class="btn btn-green" type="button" onclick="logPNR()" style="width:100%">Copy Log Entry</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- MODAL -->
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <div class="modal-title">
-      Source Preview
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div id="modalContent"></div>
   </div>
 </div>
 
 <script>
-  // GLOBAL ERROR HANDLER — surfaces JS errors on the page
-  window.onerror = function(msg, url, line, col, error) {
-    console.error('[JS ERROR]', msg, 'at line', line);
-    const el = document.getElementById('status1');
-    if (el) el.innerHTML = '<div class="status-bar error">JS Error: ' + msg + ' (line ' + line + ')</div>';
-    return false;
-  };
+// ==========================================
+// GLOBAL ERROR HANDLER
+// ==========================================
+window.onerror = function(msg, url, line) {
+  var el = document.getElementById('status1');
+  if (el) el.innerHTML = '<div class="status-bar error">JS Error: ' + msg + ' (line ' + line + ')</div>';
+};
 
-  // STATE
-  const state = {
-    apiKey: '',
-    zapierUrl: '',
-    uploadedFiles: [],
-    uploadedDataURLs: [],
-    parsedData: {},
-    sourceMap: {},
-    confidenceMap: {}
-  };
+// ==========================================
+// STATE
+// ==========================================
+var uploadedFiles = [];
+var uploadedDataURLs = [];
+var apiKey = '';
+var zapierUrl = '';
 
-  // ZAPIER INTEGRATION
-  async function sendToZapier(event, data) {
-    const url = state.zapierUrl;
-    if (!url) return;
-    try {
-      await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'no-cors',
-        body: JSON.stringify({
-          event,
-          timestamp: new Date().toISOString(),
-          ...data
-        })
-      });
-    } catch(e) {
-      console.warn('Zapier webhook failed:', e.message);
-    }
+// ==========================================
+// FILE UPLOAD — using overlay approach
+// ==========================================
+var fileInput = document.getElementById('fileInput');
+
+fileInput.addEventListener('change', function() {
+  var files = [];
+  for (var i = 0; i < fileInput.files.length; i++) {
+    files.push(fileInput.files[i]);
   }
+  if (files.length === 0) return;
 
-  // FILE UPLOAD
-  const fileInput = document.getElementById('fileInput');
-  const uploadZone = document.getElementById('uploadZone');
-
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-  uploadZone.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadZone.classList.remove('drag-over');
-    handleFiles(e.dataTransfer.files);
-  });
-
-  fileInput.addEventListener('change', () => {
-    // Copy files into a plain array BEFORE resetting the input
-    const filesToAdd = Array.from(fileInput.files);
-    console.log('[UPLOAD] change event fired, files selected:', filesToAdd.length);
-    if (filesToAdd.length > 0) {
-      handleFiles(filesToAdd);
-    }
-    // Reset input value so re-selecting the same files triggers change again
-    fileInput.value = '';
-  });
-
-  function handleFiles(fileArray) {
-    console.log('[UPLOAD] handleFiles called with', fileArray.length, 'file(s). Current total:', state.uploadedFiles.length);
-    fileArray.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        state.uploadedFiles.push(file);
-        state.uploadedDataURLs.push(e.target.result);
-        console.log('[UPLOAD] File loaded:', file.name, 'Total now:', state.uploadedFiles.length);
+  var loaded = 0;
+  for (var i = 0; i < files.length; i++) {
+    (function(file) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        uploadedFiles.push(file);
+        uploadedDataURLs.push(e.target.result);
+        loaded++;
+        if (loaded === files.length) {
+          // All files read — now safe to reset input
+          fileInput.value = '';
+        }
         renderFilePreviews();
       };
-      reader.onerror = () => {
-        console.error('[UPLOAD] Failed to read file:', file.name);
-      };
       reader.readAsDataURL(file);
-    });
+    })(files[i]);
   }
+});
 
-  function renderFilePreviews() {
-    const container = document.getElementById('filePreviews');
-    container.innerHTML = '';
-    state.uploadedFiles.forEach((file, i) => {
-      const chip = document.createElement('div');
-      chip.className = 'file-chip';
-      const isImg = file.type.startsWith('image/');
-      if (isImg) {
-        const thumb = document.createElement('img');
-        thumb.src = state.uploadedDataURLs[i];
-        thumb.className = 'thumb';
-        chip.appendChild(thumb);
-      } else {
-        chip.appendChild(document.createTextNode('📄 '));
-      }
-      const nameSpan = document.createElement('span');
-      nameSpan.textContent = file.name;
-      chip.appendChild(nameSpan);
-      const removeSpan = document.createElement('span');
-      removeSpan.className = 'remove';
-      removeSpan.textContent = '✕';
-      removeSpan.onclick = () => removeFile(i);
-      chip.appendChild(removeSpan);
-      container.appendChild(chip);
-    });
-    // Update parse button to show file count
-    const btn = document.getElementById('parseBtn');
-    const count = state.uploadedFiles.length;
-    if (count > 0) {
-      btn.textContent = `⚡ Parse ${count} Image${count > 1 ? 's' : ''} & Continue`;
-    } else {
-      btn.textContent = '⚡ Parse & Continue to Booking Form';
+function renderFilePreviews() {
+  var container = document.getElementById('filePreviews');
+  container.innerHTML = '';
+  for (var i = 0; i < uploadedFiles.length; i++) {
+    var chip = document.createElement('div');
+    chip.className = 'file-chip';
+    if (uploadedFiles[i].type && uploadedFiles[i].type.indexOf('image') === 0) {
+      var thumb = document.createElement('img');
+      thumb.src = uploadedDataURLs[i];
+      thumb.className = 'thumb';
+      chip.appendChild(thumb);
     }
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = uploadedFiles[i].name;
+    chip.appendChild(nameSpan);
+    var removeBtn = document.createElement('span');
+    removeBtn.className = 'remove';
+    removeBtn.textContent = 'x';
+    removeBtn.setAttribute('data-idx', i);
+    removeBtn.onclick = function() {
+      var idx = parseInt(this.getAttribute('data-idx'));
+      uploadedFiles.splice(idx, 1);
+      uploadedDataURLs.splice(idx, 1);
+      renderFilePreviews();
+    };
+    chip.appendChild(removeBtn);
+    container.appendChild(chip);
   }
-
-  function removeFile(i) {
-    state.uploadedFiles.splice(i, 1);
-    state.uploadedDataURLs.splice(i, 1);
-    renderFilePreviews();
+  // Update badge and button
+  var badge = document.getElementById('fileCountBadge');
+  var btn = document.getElementById('parseBtn');
+  if (uploadedFiles.length > 0) {
+    badge.innerHTML = '<span class="file-count">' + uploadedFiles.length + ' file' + (uploadedFiles.length > 1 ? 's' : '') + '</span>';
+    btn.textContent = 'Parse ' + uploadedFiles.length + ' Image' + (uploadedFiles.length > 1 ? 's' : '') + ' & Continue';
+  } else {
+    badge.innerHTML = '';
+    btn.textContent = 'Parse & Continue to Booking Form';
   }
-
-  // EXTRACT DATA FROM A SINGLE IMAGE
-  async function extractFromImage(apiKey, base64, mtype, imgLabel) {
-    const content = [
-      {
-        type: 'image',
-        source: { type: 'base64', media_type: mtype, data: base64 }
-      },
-      { type: 'text', text: `Extract ALL travel booking data visible in this single image (${imgLabel}).
-
-Identify the image type and extract accordingly:
-- PASSPORT / ID CARD: passenger last name, first name, title.
-- FLIGHT DETAIL PAGE (airline app/website): flight number (numeric only, e.g. "142"), carrier (2-letter IATA code, e.g. "AA"), origin airport (3-letter IATA code), destination airport (3-letter IATA code), departure time, arrival time, cabin class, booking code letter (O, R, B, K, J, Y, etc.), date if shown.
-- TRIP SUMMARY / ITINERARY: for EACH segment shown: origin city/airport, destination city/airport, date (DDMON format like 16MAR), departure time, arrival time. A round trip has 2 segments — include BOTH.
-- BOOKING CONFIRMATION: all flight details plus passenger names, contact info.
-- EMAIL / TEXT: phone, email, special requests, or any of the above.
-
-For airline app screenshots: the city at the TOP or LEFT of an arrow = ORIGIN (departure), city at BOTTOM or RIGHT = DESTINATION (arrival).
-
-IMPORTANT: Use JSON null (not the string "null") for any field not visible in the image. If the image shows a round trip with 2 segments, include 2 entries in the flights array. Always use 3-letter IATA airport codes for origin/destination when visible.
-
-Return ONLY valid JSON:
-{
-  "image_type": "flight_detail",
-  "flights": [
-    {
-      "origin": "JFK",
-      "destination": "LHR",
-      "date": "16MAR",
-      "flight_number": "142",
-      "carrier": "AA",
-      "booking_class": "O",
-      "departure_time": "19:30",
-      "arrival_time": "07:45",
-      "cabin": "business"
-    }
-  ],
-  "passengers": [{"last": "SMITH", "first": "JOHN", "title": "MR"}],
-  "phone": null,
-  "email": null,
-  "frequent_flyer": null
 }
 
-Replace the example values with ACTUAL data from the image. Use JSON null for missing fields.
-No explanation. No markdown. JSON only.` }
-    ];
+// ==========================================
+// PARSE BUTTON
+// ==========================================
+document.getElementById('parseBtn').addEventListener('click', function() {
+  parseInputs();
+});
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+async function parseInputs() {
+  apiKey = document.getElementById('apiKey').value.trim();
+  zapierUrl = document.getElementById('zapierUrl').value.trim();
+  var textVal = document.getElementById('textInput').value.trim();
+
+  if (!apiKey) {
+    showStatus('status1', 'error', 'Enter your Claude API key first.');
+    return;
+  }
+  if (uploadedFiles.length === 0 && !textVal) {
+    showStatus('status1', 'error', 'Upload at least one image or paste text. Files tracked: ' + uploadedFiles.length);
+    return;
+  }
+
+  var totalInputs = uploadedDataURLs.length + (textVal ? 1 : 0);
+  showStatus('status1', 'loading', 'Parsing ' + totalInputs + ' input(s) — calling Claude API...');
+  document.getElementById('parseBtn').disabled = true;
+
+  try {
+    var promises = [];
+
+    // Image extractions
+    for (var i = 0; i < uploadedDataURLs.length; i++) {
+      promises.push(extractFromImage(apiKey, uploadedDataURLs[i], uploadedFiles[i].type || 'image/jpeg', 'img_' + (i+1)));
+    }
+
+    // Text extraction
+    if (textVal) {
+      promises.push(extractFromText(apiKey, textVal));
+    }
+
+    showStatus('status1', 'loading', 'Waiting for ' + promises.length + ' extraction(s)...');
+    var results = await Promise.all(promises);
+
+    showStatus('status1', 'loading', 'Combining extracted data...');
+    var combined = combineResults(results);
+
+    populatePage2(combined);
+    goToPage(2);
+    showStatus('status1', 'success', 'Parsed ' + totalInputs + ' input(s) — ' + (combined.flights.length || 0) + ' segment(s) found.');
+
+  } catch(e) {
+    showStatus('status1', 'error', 'Parse failed: ' + e.message);
+  }
+  document.getElementById('parseBtn').disabled = false;
+}
+
+// ==========================================
+// API CALLS
+// ==========================================
+async function extractFromImage(key, dataURL, mtype, label) {
+  var base64 = dataURL.split(',')[1];
+  var prompt = 'Extract ALL travel booking data from this image (' + label + ').\n\n'
+    + 'Look for: flight numbers (numeric only like "142"), carriers (2-letter IATA like "AA"), '
+    + 'origin/destination airports (3-letter IATA), dates (DDMON like "16MAR"), '
+    + 'departure/arrival times, cabin class, booking class letter (Y/B/O/J/R/etc), '
+    + 'passenger names, phone, email.\n\n'
+    + 'For airline apps: city at TOP/LEFT of arrow = ORIGIN, BOTTOM/RIGHT = DESTINATION.\n'
+    + 'Round trips have 2 segments — include BOTH.\n\n'
+    + 'Return ONLY valid JSON:\n'
+    + '{"image_type":"flight_detail","flights":[{"origin":"JFK","destination":"LHR","date":"16MAR",'
+    + '"flight_number":"142","carrier":"AA","booking_class":"O","departure_time":"19:30",'
+    + '"arrival_time":"07:45","cabin":"business"}],"passengers":[{"last":"SMITH","first":"JOHN",'
+    + '"title":"MR"}],"phone":null,"email":null,"frequent_flyer":null}\n\n'
+    + 'Use JSON null for missing fields. Replace examples with ACTUAL data. JSON only, no explanation.';
+
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      temperature: 0,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } },
+        { type: 'text', text: prompt }
+      ]}]
+    })
+  });
+
+  if (!res.ok) {
+    var err = await res.json();
+    throw new Error(err.error?.message || 'API error for ' + label);
+  }
+
+  var data = await res.json();
+  var raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return JSON.parse(raw);
+}
+
+async function extractFromText(key, text) {
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      temperature: 0,
+      messages: [{ role: 'user', content: 'Extract travel booking data from this text. Return ONLY JSON: {"image_type":"text","flights":[{"origin":"XXX","destination":"YYY","date":"DDMON","flight_number":"000","carrier":"XX","booking_class":"X","departure_time":null,"arrival_time":null,"cabin":null}],"passengers":[{"last":null,"first":null,"title":null}],"phone":null,"email":null,"frequent_flyer":null}. Use null for missing. JSON only.\n\nText:\n' + text }]
+    })
+  });
+  if (!res.ok) throw new Error('Text parse failed');
+  var data = await res.json();
+  var raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  return JSON.parse(raw);
+}
+
+// ==========================================
+// COMBINE RESULTS
+// ==========================================
+function cleanVal(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'string') {
+    var s = v.trim();
+    if (s === '' || s === 'null' || s === 'N/A' || s === 'n/a' || s === 'none') return null;
+    return s;
+  }
+  return v;
+}
+
+function combineResults(results) {
+  var allFlights = [];
+  var passengers = [];
+  var phone = null, email = null, ff = null;
+
+  for (var ri = 0; ri < results.length; ri++) {
+    var r = results[ri];
+    var src = 'img_' + (ri + 1);
+
+    if (r.flights) {
+      for (var fi = 0; fi < r.flights.length; fi++) {
+        var f = r.flights[fi];
+        allFlights.push({
+          origin: cleanVal(f.origin),
+          destination: cleanVal(f.destination),
+          date: cleanVal(f.date),
+          flight_number: cleanVal(f.flight_number),
+          carrier: cleanVal(f.carrier),
+          booking_class: cleanVal(f.booking_class),
+          source: src
+        });
+      }
+    }
+    if (r.passengers) {
+      for (var pi = 0; pi < r.passengers.length; pi++) {
+        var p = r.passengers[pi];
+        var last = cleanVal(p.last), first = cleanVal(p.first), title = cleanVal(p.title);
+        if (last || first) passengers.push({ last: last, first: first, title: title, source: src });
+      }
+    }
+    if (cleanVal(r.phone) && !phone) phone = cleanVal(r.phone);
+    if (cleanVal(r.email) && !email) email = cleanVal(r.email);
+    if (cleanVal(r.frequent_flyer) && !ff) ff = cleanVal(r.frequent_flyer);
+  }
+
+  // Merge flights with same origin+destination
+  var merged = [];
+  var used = {};
+  for (var i = 0; i < allFlights.length; i++) {
+    if (used[i]) continue;
+    var base = Object.assign({}, allFlights[i]);
+    for (var j = i + 1; j < allFlights.length; j++) {
+      if (used[j]) continue;
+      if (base.origin && allFlights[j].origin && base.destination && allFlights[j].destination &&
+          base.origin === allFlights[j].origin && base.destination === allFlights[j].destination) {
+        // Merge missing fields
+        if (!base.flight_number && allFlights[j].flight_number) base.flight_number = allFlights[j].flight_number;
+        if (!base.carrier && allFlights[j].carrier) base.carrier = allFlights[j].carrier;
+        if (!base.booking_class && allFlights[j].booking_class) base.booking_class = allFlights[j].booking_class;
+        if (!base.date && allFlights[j].date) base.date = allFlights[j].date;
+        used[j] = true;
+      }
+    }
+    merged.push(base);
+    used[i] = true;
+  }
+
+  return {
+    flights: merged,
+    passengers: passengers,
+    phone: phone,
+    email: email,
+    frequent_flyer: ff
+  };
+}
+
+// ==========================================
+// PAGE 2 — RENDER & POPULATE
+// ==========================================
+function renderSegmentFields() {
+  var count = parseInt(document.getElementById('f-segcount').value);
+  var container = document.getElementById('segmentFields');
+  container.innerHTML = '';
+  var labels = ['Outbound', 'Return', 'Segment 3', 'Segment 4'];
+  for (var i = 0; i < count; i++) {
+    container.innerHTML +=
+      '<div class="card">'
+      + '<div class="card-title" style="color:var(--accent2)">Segment ' + (i+1) + ' — ' + labels[i] + '</div>'
+      + '<div class="form-grid">'
+      + '<div><span class="form-label">Origin (IATA)<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-seg' + i + '-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '<div><span class="form-label">Destination (IATA)<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-seg' + i + '-dest" placeholder="LHR" maxlength="3" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '<div><span class="form-label">Travel Date<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-seg' + i + '-date" placeholder="16MAR" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '<div><span class="form-label">Flight Number</span>'
+      + '<input type="text" id="f-seg' + i + '-flightnum" placeholder="142"></div>'
+      + '<div><span class="form-label">Booking Class<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-seg' + i + '-class" placeholder="Y" maxlength="1" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '<div><span class="form-label">Airline Code<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-seg' + i + '-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '</div></div>';
+  }
+  validateRequired();
+}
+
+function renderPaxFields() {
+  var count = parseInt(document.getElementById('f-paxcount').value);
+  var container = document.getElementById('paxFields');
+  container.innerHTML = '';
+  for (var i = 0; i < count; i++) {
+    container.innerHTML +=
+      '<div class="pax-section">'
+      + '<div class="pax-title">Passenger ' + (i+1) + '</div>'
+      + '<div class="form-grid-3">'
+      + '<div><span class="form-label">Last Name<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-last' + i + '" placeholder="SMITH" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '<div><span class="form-label">First Name<span class="req-star">*</span></span>'
+      + '<input type="text" id="f-first' + i + '" placeholder="JOHN" oninput="this.value=this.value.toUpperCase();validateRequired()"></div>'
+      + '<div><span class="form-label">Title<span class="req-star">*</span></span>'
+      + '<select id="f-title' + i + '" onchange="validateRequired()">'
+      + '<option value="">Select...</option><option value="MR">MR</option><option value="MRS">MRS</option>'
+      + '<option value="MS">MS</option><option value="MSTR">MSTR</option><option value="MISS">MISS</option>'
+      + '</select></div>'
+      + '</div></div>';
+  }
+  validateRequired();
+}
+
+// Init on load
+renderSegmentFields();
+renderPaxFields();
+
+function populatePage2(d) {
+  // Flights
+  if (d.flights && d.flights.length > 0) {
+    var segcount = Math.min(d.flights.length, 4);
+    document.getElementById('f-segcount').value = segcount;
+    renderSegmentFields();
+    for (var i = 0; i < segcount; i++) {
+      var f = d.flights[i];
+      if (f.origin) document.getElementById('f-seg' + i + '-origin').value = f.origin.toUpperCase();
+      if (f.destination) document.getElementById('f-seg' + i + '-dest').value = f.destination.toUpperCase();
+      if (f.date) document.getElementById('f-seg' + i + '-date').value = f.date.toUpperCase();
+      if (f.flight_number) document.getElementById('f-seg' + i + '-flightnum').value = f.flight_number;
+      if (f.booking_class) document.getElementById('f-seg' + i + '-class').value = f.booking_class.toUpperCase();
+      if (f.carrier) document.getElementById('f-seg' + i + '-carrier').value = f.carrier.toUpperCase();
+    }
+  }
+
+  // Passengers
+  if (d.passengers && d.passengers.length > 0) {
+    var paxcount = Math.min(d.passengers.length, 7);
+    document.getElementById('f-paxcount').value = paxcount;
+    renderPaxFields();
+    for (var i = 0; i < paxcount; i++) {
+      var p = d.passengers[i];
+      if (p.last) document.getElementById('f-last' + i).value = p.last.toUpperCase();
+      if (p.first) document.getElementById('f-first' + i).value = p.first.toUpperCase();
+      if (p.title) {
+        var titleEl = document.getElementById('f-title' + i);
+        titleEl.value = p.title.toUpperCase();
+      }
+    }
+    // Auto-fill received from
+    if (d.passengers[0].last) {
+      document.getElementById('f-rcvdfrom').value = d.passengers[0].last.toUpperCase();
+    }
+  }
+
+  // Contact
+  if (d.phone) document.getElementById('f-phone').value = d.phone;
+  if (d.email) document.getElementById('f-email').value = d.email;
+  if (d.frequent_flyer) document.getElementById('f-ff').value = d.frequent_flyer;
+
+  validateRequired();
+}
+
+function validateRequired() {
+  var segcount = parseInt(document.getElementById('f-segcount').value || '1');
+  for (var i = 0; i < segcount; i++) {
+    checkField('f-seg' + i + '-origin');
+    checkField('f-seg' + i + '-dest');
+    checkField('f-seg' + i + '-date');
+    checkField('f-seg' + i + '-class');
+    checkField('f-seg' + i + '-carrier');
+  }
+  checkField('f-phone');
+  checkField('f-tickdate');
+  checkField('f-rcvdfrom');
+  var paxcount = parseInt(document.getElementById('f-paxcount').value || '1');
+  for (var i = 0; i < paxcount; i++) {
+    checkField('f-last' + i);
+    checkField('f-first' + i);
+    checkField('f-title' + i);
+  }
+}
+
+function checkField(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!el.value || !el.value.trim()) el.classList.add('required-empty');
+  else el.classList.remove('required-empty');
+}
+
+// ==========================================
+// PAGE 3 — GENERATE COMMANDS
+// ==========================================
+function generateCommands() {
+  var segcount = parseInt(document.getElementById('f-segcount').value);
+  var paxcount = parseInt(document.getElementById('f-paxcount').value);
+  var segments = [];
+  var warnings = [];
+
+  for (var i = 0; i < segcount; i++) {
+    var s = {
+      origin: (document.getElementById('f-seg' + i + '-origin').value || '').trim(),
+      dest: (document.getElementById('f-seg' + i + '-dest').value || '').trim(),
+      date: (document.getElementById('f-seg' + i + '-date').value || '').trim(),
+      carrier: (document.getElementById('f-seg' + i + '-carrier').value || '').trim(),
+      flightnum: (document.getElementById('f-seg' + i + '-flightnum').value || '').trim(),
+      bookingClass: (document.getElementById('f-seg' + i + '-class').value || '').trim() || 'Y'
+    };
+    if (!s.origin) warnings.push('Seg ' + (i+1) + ': Origin missing');
+    if (!s.dest) warnings.push('Seg ' + (i+1) + ': Dest missing');
+    if (!s.date) warnings.push('Seg ' + (i+1) + ': Date missing');
+    if (!s.carrier) warnings.push('Seg ' + (i+1) + ': Carrier missing');
+    segments.push(s);
+  }
+
+  // --- STAGE 1: Availability or Direct Sell ---
+  var stage1Lines = [];
+  var allHaveFlight = true;
+  for (var i = 0; i < segments.length; i++) {
+    var s = segments[i];
+    if (!s.flightnum || !s.carrier) allHaveFlight = false;
+  }
+
+  for (var i = 0; i < segments.length; i++) {
+    var s = segments[i];
+    if (s.flightnum && s.carrier) {
+      stage1Lines.push('1' + s.carrier + s.flightnum + s.bookingClass + s.date + s.origin + s.dest);
+    } else if (s.origin && s.dest && s.date) {
+      stage1Lines.push('1' + s.date + s.origin + s.dest + (s.carrier ? '/' + s.carrier : ''));
+    } else {
+      stage1Lines.push('// Seg ' + (i+1) + ': [INCOMPLETE - fill origin/dest/date]');
+    }
+  }
+  var stage1Cmd = stage1Lines.join('\n');
+
+  // --- STAGE 2: Full PNR ---
+  var phone = (document.getElementById('f-phone').value || '').trim().replace(/\D/g, '');
+  var paxphone = (document.getElementById('f-paxphone').value || '').trim().replace(/\D/g, '');
+  var email = (document.getElementById('f-email').value || '').trim();
+  var tickdate = (document.getElementById('f-tickdate').value || '').trim();
+  var rcvdfrom = (document.getElementById('f-rcvdfrom').value || '').trim();
+  var ssr = (document.getElementById('f-ssr').value || '').trim();
+  var ff = (document.getElementById('f-ff').value || '').trim();
+
+  if (!phone) warnings.push('Phone missing');
+  if (!tickdate) warnings.push('Ticket deadline missing');
+  if (!rcvdfrom) warnings.push('Received from missing');
+
+  var stage2Lines = [];
+
+  // Sell lines
+  for (var i = 0; i < segments.length; i++) {
+    var s = segments[i];
+    if (s.flightnum && s.carrier) {
+      stage2Lines.push('0' + s.carrier + s.flightnum + s.bookingClass + s.date + s.origin + s.dest + 'SS1');
+    } else {
+      stage2Lines.push('// 0[CARRIER][FLIGHT#]' + s.bookingClass + (s.date || '[DATE]') + (s.origin || '[ORIG]') + (s.dest || '[DEST]') + 'SS1');
+    }
+  }
+
+  // Passenger names
+  for (var i = 0; i < paxcount; i++) {
+    var last = (document.getElementById('f-last' + i)?.value || '').trim();
+    var first = (document.getElementById('f-first' + i)?.value || '').trim();
+    var title = (document.getElementById('f-title' + i)?.value || '').trim() || 'MR';
+    if (last && first) {
+      stage2Lines.push('-' + last + '/' + first + title);
+    } else {
+      warnings.push('Pax ' + (i+1) + ': Name missing');
+      stage2Lines.push('// -[LASTNAME]/[FIRSTNAME]MR');
+    }
+  }
+
+  // Phone
+  if (phone) stage2Lines.push('9' + phone + '-A');
+  else stage2Lines.push('// 9[PHONE]-A');
+  if (paxphone) stage2Lines.push('9' + paxphone + '-B');
+
+  // Email
+  if (email) {
+    var sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
+    stage2Lines.push('APE-' + sabreEmail);
+  }
+
+  // Frequent Flyer
+  if (ff) {
+    var parts = ff.split('-');
+    stage2Lines.push('FFDL' + (parts[0] || 'AA') + (parts[1] || ff) + '-1.1');
+  }
+
+  // SSR
+  if (ssr) stage2Lines.push('3' + ssr + '-1.1');
+
+  // Ticketing
+  if (tickdate) stage2Lines.push('7TAW' + tickdate + '/');
+  else stage2Lines.push('// 7TAW[DATE]/');
+
+  // Received from + end
+  if (rcvdfrom) stage2Lines.push('6' + rcvdfrom);
+  else stage2Lines.push('// 6[RECEIVED FROM]');
+  stage2Lines.push('ER');
+
+  var stage2Cmd = stage2Lines.join('\n');
+
+  // --- RENDER PAGE 3 ---
+  goToPage(3);
+
+  var label1 = document.getElementById('stage1label');
+  label1.textContent = allHaveFlight
+    ? 'STAGE 1 — Direct Sell (' + segcount + ' segment' + (segcount > 1 ? 's' : '') + ')'
+    : 'STAGE 1 — Availability Check (' + segcount + ' segment' + (segcount > 1 ? 's' : '') + ')';
+
+  var out1 = document.getElementById('stage1output');
+  out1.textContent = stage1Cmd;
+  addCopyBtn('stage1output', stage1Cmd);
+
+  var label2 = document.getElementById('stage2label');
+  label2.textContent = allHaveFlight
+    ? 'STAGE 2 — Full PNR Block (includes sell)'
+    : 'STAGE 2 — Full PNR Block (with placeholders)';
+
+  var out2 = document.getElementById('stage2output');
+  out2.textContent = stage2Cmd;
+  addCopyBtn('stage2output', stage2Cmd);
+
+  // Show availability feedback card if not all flights have numbers
+  document.getElementById('availFeedbackCard').style.display = allHaveFlight ? 'none' : '';
+
+  // Warnings
+  var warningsEl = document.getElementById('commandWarnings');
+  if (warnings.length > 0) {
+    warningsEl.style.display = 'block';
+    warningsEl.innerHTML = '<strong>Missing:</strong> ' + warnings.join(' | ');
+  } else {
+    warningsEl.style.display = 'none';
+  }
+
+  showStatus('status3', 'success', segcount + ' segment(s) generated. ' + (warnings.length > 0 ? warnings.length + ' field(s) need attention.' : 'All fields complete.'));
+
+  sendToZapier('commands_generated', { stage1: stage1Cmd, stage2: stage2Cmd });
+}
+
+// ==========================================
+// AVAILABILITY RESPONSE PARSER
+// ==========================================
+async function parseAvailResponse() {
+  var resp = (document.getElementById('sabreResponse').value || '').trim();
+  if (!resp) { alert('Paste Sabre response first.'); return; }
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        temperature: 0,
-        messages: [{ role: 'user', content }]
+        model: 'claude-sonnet-4-6', max_tokens: 200,
+        messages: [{ role: 'user', content: 'From this Sabre GDS availability response, find the best line. Return ONLY JSON: {"line":"1","class":"Y"}. No explanation.\n\n' + resp }]
       })
     });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || `API error for ${imgLabel}`);
-    }
-
-    const data = await res.json();
-    let raw = data.content[0].text.trim();
-    raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    console.log(`[PARSE] ${imgLabel} raw:`, raw);
-    return JSON.parse(raw);
+    if (!res.ok) throw new Error('API error');
+    var data = await res.json();
+    var raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    var parsed = JSON.parse(raw);
+    document.getElementById('f-linenum').value = parsed.line || '1';
+    showStatus('status3', 'success', 'Line ' + parsed.line + ' identified for class ' + parsed.class);
+  } catch(e) {
+    showStatus('status3', 'error', 'Parse failed: ' + e.message);
   }
-
-  // Clean "null" strings and other junk from extraction results
-  function cleanExtraction(obj) {
-    if (obj === null || obj === undefined) return null;
-    if (typeof obj === 'string') {
-      const s = obj.trim();
-      if (s === 'null' || s === 'N/A' || s === 'n/a' || s === 'none' || s === 'unknown' || s === '') return null;
-      return s;
-    }
-    if (Array.isArray(obj)) return obj.map(cleanExtraction);
-    if (typeof obj === 'object') {
-      const out = {};
-      for (const [k, v] of Object.entries(obj)) {
-        out[k] = cleanExtraction(v);
-      }
-      return out;
-    }
-    return obj;
-  }
-
-  // COMBINE PER-IMAGE RESULTS INTO FINAL DATA
-  function combineImageResults(results) {
-    // Clean all "null" strings first
-    results = results.map(cleanExtraction);
-    console.log('[COMBINE] Cleaned results:', JSON.stringify(results, null, 2));
-
-    const passengers = [];
-    let phone = null, email = null, frequentFlyer = null;
-
-    // Gather ALL flights from ALL images, tagged with source
-    const allFlights = [];
-
-    results.forEach((r, i) => {
-      const src = `img_${i + 1}`;
-
-      // Collect passengers from any image
-      if (r.passengers) {
-        r.passengers.forEach(p => {
-          if (p.last || p.first) passengers.push({ ...p, source: src });
-        });
-      }
-
-      // Collect contact info from any image
-      if (r.phone && !phone) phone = { value: r.phone, source: src };
-      if (r.email && !email) email = { value: r.email, source: src };
-      if (r.frequent_flyer && !frequentFlyer) frequentFlyer = { value: r.frequent_flyer, source: src };
-
-      // Collect ALL flights from every image
-      if (r.flights && r.flights.length > 0) {
-        r.flights.forEach(f => {
-          allFlights.push({
-            ...f,
-            source: src,
-            imageType: r.image_type || 'unknown'
-          });
-        });
-      }
-    });
-
-    console.log('[COMBINE] All flights collected:', allFlights.length, allFlights);
-    console.log('[COMBINE] Passengers:', passengers.length);
-
-    // Now merge flights that represent the SAME segment (same route)
-    // Two flights match if they share the same origin+destination
-    const merged = [];
-    const used = new Set();
-
-    for (let i = 0; i < allFlights.length; i++) {
-      if (used.has(i)) continue;
-      const base = { ...allFlights[i] };
-
-      // Try to find another flight with the same route to merge with
-      for (let j = i + 1; j < allFlights.length; j++) {
-        if (used.has(j)) continue;
-        const other = allFlights[j];
-
-        // Check if same route
-        const sameRoute = base.origin && other.origin && base.destination && other.destination &&
-          base.origin === other.origin && base.destination === other.destination;
-
-        if (sameRoute) {
-          console.log(`[COMBINE] Merging flight ${i} (${base.source}) with ${j} (${other.source})`);
-          // Merge: prefer non-null values, prefer flight_detail source for flight-specific data
-          if (!base.flight_number && other.flight_number) { base.flight_number = other.flight_number; base._fn_src = other.source; }
-          if (!base.carrier && other.carrier) { base.carrier = other.carrier; base._ca_src = other.source; }
-          if (!base.booking_class && other.booking_class) { base.booking_class = other.booking_class; base._bc_src = other.source; }
-          if (!base.date && other.date) { base.date = other.date; base._dt_src = other.source; }
-          if (!base.departure_time && other.departure_time) base.departure_time = other.departure_time;
-          if (!base.arrival_time && other.arrival_time) base.arrival_time = other.arrival_time;
-          if (!base.cabin && other.cabin) base.cabin = other.cabin;
-          used.add(j);
-        }
-      }
-
-      merged.push(base);
-      used.add(i);
-    }
-
-    console.log('[COMBINE] After merge:', merged.length, 'segments');
-
-    // Build final flights array with {value, source, confidence} structure
-    const flights = merged.map(f => ({
-      origin: { value: f.origin || null, source: f.source, confidence: f.origin ? 'high' : 'low' },
-      destination: { value: f.destination || null, source: f.source, confidence: f.destination ? 'high' : 'low' },
-      date: { value: f.date || null, source: f._dt_src || f.source, confidence: f.date ? 'high' : 'low' },
-      flight_number: { value: f.flight_number || null, source: f._fn_src || f.source, confidence: f.flight_number ? 'high' : 'low' },
-      carrier: { value: f.carrier || null, source: f._ca_src || f.source, confidence: f.carrier ? 'high' : 'low' },
-      booking_class: { value: f.booking_class || null, source: f._bc_src || f.source, confidence: f.booking_class ? 'high' : 'low' }
-    )));
-
-    // Sort by date (outbound first)
-    const monthOrder = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
-    flights.sort((a, b) => {
-      const da = a.date?.value, db = b.date?.value;
-      if (!da || !db) return 0;
-      const dayA = parseInt(da.slice(0, 2)), monA = monthOrder[da.slice(2)] || 0;
-      const dayB = parseInt(db.slice(0, 2)), monB = monthOrder[db.slice(2)] || 0;
-      return (monA * 100 + dayA) - (monB * 100 + dayB);
-    });
-
-    // Build final result
-    const combined = {
-      flights,
-      passengers: passengers.map(p => ({
-        last: { value: p.last ? p.last.toUpperCase() : null, source: p.source, confidence: p.last ? 'high' : 'low' },
-        first: { value: p.first ? p.first.toUpperCase() : null, source: p.source, confidence: p.first ? 'high' : 'low' },
-        title: { value: p.title ? p.title.toUpperCase() : null, source: p.source, confidence: p.title ? 'medium' : 'low' }
-      })),
-      phone: phone ? { value: phone.value, source: phone.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' },
-      pax_phone: { value: null, source: 'unknown', confidence: 'low' },
-      email: email ? { value: email.value, source: email.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' },
-      frequent_flyer: frequentFlyer ? { value: frequentFlyer.value, source: frequentFlyer.source, confidence: 'high' } : { value: null, source: 'unknown', confidence: 'low' }
-    };
-
-    console.log('[COMBINE] Final result:', JSON.stringify(combined, null, 2));
-    return combined;
-  }
-
-  // PARSE INPUTS
-  async function parseInputs() {
-    console.log('[PARSE] Button clicked. Files:', state.uploadedFiles.length, 'DataURLs:', state.uploadedDataURLs.length);
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const textVal = document.getElementById('textInput').value.trim();
-
-    if (!apiKey) { showStatus('status1', 'error', 'Enter your Claude API key above first.'); return; }
-    if (!textVal && state.uploadedFiles.length === 0) {
-      showStatus('status1', 'error', 'Upload at least one image or paste text to parse. (Files tracked: ' + state.uploadedFiles.length + ')');
-      return;
-    }
-
-    state.apiKey = apiKey;
-    state.zapierUrl = document.getElementById('zapierUrl').value.trim();
-    const totalImages = state.uploadedDataURLs.length;
-    showStatus('status1', 'loading', `Parsing ${totalImages} image(s) and ${textVal ? '1 text block' : 'no text'} — calling Claude API...`);
-    document.getElementById('parseBtn').disabled = true;
-
-    try {
-      // Step 1: Extract from each image in parallel
-      const imagePromises = state.uploadedDataURLs.map((dataURL, i) => {
-        const base64 = dataURL.split(',')[1];
-        const mtype = state.uploadedFiles[i].type || 'image/jpeg';
-        const label = `img_${i + 1} (${state.uploadedFiles[i].name})`;
-        return extractFromImage(apiKey, base64, mtype, label);
-      });
-
-      // Also handle pasted text as a "virtual image"
-      if (textVal) {
-        imagePromises.push((async () => {
-          const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-              'anthropic-dangerous-direct-browser-access': 'true'
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-6',
-              max_tokens: 1000,
-              temperature: 0,
-              messages: [{ role: 'user', content: `Extract all travel booking data from this text. Return ONLY valid JSON with the same structure as a flight/passenger extraction: {"image_type":"other","flights":[{"origin":"XXX","destination":"YYY","date":"DDMON","flight_number":"000","carrier":"XX","booking_class":"X","departure_time":null,"arrival_time":null,"cabin":null}],"passengers":[{"last":null,"first":null,"title":null}],"phone":null,"email":null,"frequent_flyer":null}. Use null for missing fields. JSON only.\n\nText:\n${textVal}` }]
-            })
-          });
-          if (!res.ok) throw new Error('Text parse failed');
-          const data = await res.json();
-          let raw = data.content[0].text.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          console.log('[PARSE] text raw:', raw);
-          return JSON.parse(raw);
-        })());
-      }
-
-      showStatus('status1', 'loading', `Parsing ${totalImages} image(s) — waiting for all extractions...`);
-      const results = await Promise.all(imagePromises);
-      console.log('[PARSE] All image results:', results);
-
-      // Step 2: Combine results in code
-      showStatus('status1', 'loading', 'Combining data from all images...');
-      const parsed = combineImageResults(results);
-      state.parsedData = parsed;
-      state.perImageResults = results; // save for summary display
-
-      populatePage2(parsed, results);
-      goToPage(2);
-      showStatus('status1', 'success', `Parsed ${totalImages} image(s) — ${parsed.flights.length} flight segment(s) found.`);
-      document.getElementById('parseBtn').disabled = false;
-
-      // Send parsed data to Zapier
-      sendToZapier('flight_parsed', {
-        flights: parsed.flights?.map(f => ({
-          origin: f.origin?.value, destination: f.destination?.value,
-          date: f.date?.value, flight_number: f.flight_number?.value,
-          carrier: f.carrier?.value, booking_class: f.booking_class?.value
-        })),
-        segment_count: parsed.flights?.length || 1,
-        passengers: parsed.passengers?.map(p => ({
-          last: p.last?.value, first: p.first?.value, title: p.title?.value
-        })),
-        phone: parsed.phone?.value,
-        email: parsed.email?.value
-      });
-
-    } catch(e) {
-      console.error('[PARSE] Error:', e);
-      showStatus('status1', 'error', 'Parse failed: ' + e.message + ' (Check browser console for details)');
-      document.getElementById('parseBtn').disabled = false;
-    }
-  }
-
-  // RENDER FLIGHT SEGMENT FIELDS (with source badges)
-  function renderSegmentFields() {
-    const count = parseInt(document.getElementById('f-segcount').value);
-    const container = document.getElementById('segmentFields');
-    container.innerHTML = '';
-    const labels = ['Outbound', 'Return', 'Segment 3', 'Segment 4'];
-    for (let i = 0; i < count; i++) {
-      container.innerHTML += `
-        <div class="card">
-          <div class="card-title" style="color:var(--accent2)">Segment ${i+1} — ${labels[i]}</div>
-          <div class="form-grid">
-            <div>
-              <div class="field-row">
-                <label class="required-label">Origin (IATA)<span class="req-star">*</span></label>
-                <span class="src-tag" id="src-seg${i}-origin"></span>
-              </div>
-              <input type="text" id="f-seg${i}-origin" placeholder="JFK" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-            <div>
-              <div class="field-row">
-                <label class="required-label">Destination (IATA)<span class="req-star">*</span></label>
-                <span class="src-tag" id="src-seg${i}-dest"></span>
-              </div>
-              <input type="text" id="f-seg${i}-dest" placeholder="LHR" maxlength="3" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-            <div>
-              <div class="field-row">
-                <label class="required-label">Travel Date<span class="req-star">*</span></label>
-                <span class="src-tag" id="src-seg${i}-date"></span>
-              </div>
-              <input type="text" id="f-seg${i}-date" placeholder="16MAR" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-            <div>
-              <div class="field-row">
-                <label>Flight Number</label>
-                <span class="src-tag" id="src-seg${i}-flightnum"></span>
-              </div>
-              <input type="text" id="f-seg${i}-flightnum" placeholder="142" oninput="this.value=this.value.toUpperCase()">
-            </div>
-            <div>
-              <div class="field-row">
-                <label class="required-label">Booking Class<span class="req-star">*</span></label>
-                <span class="src-tag" id="src-seg${i}-class"></span>
-              </div>
-              <input type="text" id="f-seg${i}-class" placeholder="Y" maxlength="1" title="Fare class: Y/B/O=economy, C/J/R=business, F=first" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-            <div>
-              <div class="field-row">
-                <label class="required-label">Airline Code<span class="req-star">*</span></label>
-                <span class="src-tag" id="src-seg${i}-carrier"></span>
-              </div>
-              <input type="text" id="f-seg${i}-carrier" placeholder="AA" maxlength="2" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-          </div>
-        </div>`;
-    }
-    validateRequired();
-  }
-
-  renderSegmentFields(); // init
-
-  // RENDER EXTRACTION SUMMARY — shows what each image contributed
-  function renderExtractionSummary(perImageResults) {
-    const container = document.getElementById('extractionSummary');
-    if (!perImageResults || perImageResults.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted); font-size:0.8rem;">No extraction data.</div>';
-      return;
-    }
-    container.innerHTML = '';
-    perImageResults.forEach((r, i) => {
-      const imgNum = i + 1;
-      const fileName = state.uploadedFiles[i]?.name || `Image ${imgNum}`;
-      const thumbUrl = state.uploadedDataURLs[i] || '';
-      const imageType = (r.image_type || 'unknown').replace(/_/g, ' ');
-
-      let html = `<div class="extract-card">`;
-      html += `<div class="extract-card-header">`;
-      if (thumbUrl) html += `<img class="extract-card-thumb" src="${thumbUrl}" alt="${fileName}">`;
-      html += `<div><div class="img-label">img_${imgNum}: ${fileName}</div>`;
-      html += `<span class="img-type">${imageType}</span></div></div>`;
-
-      // Show flights from this image
-      if (r.flights && r.flights.length > 0) {
-        r.flights.forEach((f, fi) => {
-          if (r.flights.length > 1) html += `<div class="extract-seg-divider">Flight ${fi + 1}</div>`;
-          const fields = [
-            ['Route', (f.origin || '???') + ' → ' + (f.destination || '???')],
-            ['Date', f.date],
-            ['Flight #', f.flight_number],
-            ['Carrier', f.carrier],
-            ['Class', f.booking_class],
-            ['Cabin', f.cabin],
-            ['Depart', f.departure_time],
-            ['Arrive', f.arrival_time]
-          ];
-          fields.forEach(([lbl, val]) => {
-            if (val) {
-              html += `<div class="extract-data-row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
-            }
-          });
-        });
-      }
-
-      // Show passengers from this image
-      if (r.passengers && r.passengers.length > 0) {
-        r.passengers.forEach(p => {
-          if (p.last || p.first) {
-            const name = [(p.title || ''), (p.first || ''), (p.last || '')].filter(Boolean).join(' ');
-            html += `<div class="extract-data-row"><span class="lbl">Passenger</span><span class="val">${name}</span></div>`;
-          }
-        });
-      }
-
-      // Show contact from this image
-      if (r.phone) html += `<div class="extract-data-row"><span class="lbl">Phone</span><span class="val">${r.phone}</span></div>`;
-      if (r.email) html += `<div class="extract-data-row"><span class="lbl">Email</span><span class="val">${r.email}</span></div>`;
-
-      // If nothing useful found
-      const hasData = (r.flights?.length > 0 && r.flights.some(f => f.origin || f.flight_number)) ||
-                      (r.passengers?.length > 0 && r.passengers.some(p => p.last || p.first)) ||
-                      r.phone || r.email;
-      if (!hasData) {
-        html += `<div class="extract-data-row"><span class="val null-val">No extractable data found</span></div>`;
-      }
-
-      html += `</div>`;
-      container.innerHTML += html;
-    });
-  }
-
-  // SET SOURCE BADGE on a field
-  function setSrcBadge(id, source, confidence) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (!source || source === 'unknown') { el.textContent = ''; el.className = 'src-tag'; return; }
-    const cls = source.startsWith('img') ? 'img' : source === 'text' ? 'txt' : 'combined';
-    const confDot = confidence === 'high' ? '●' : confidence === 'medium' ? '◐' : '○';
-    el.textContent = source + ' ' + confDot;
-    el.className = `src-tag ${cls}`;
-  }
-
-  function populatePage2(d, perImageResults) {
-    // Write debug output
-    const debugEl = document.getElementById('debugOutput');
-    if (debugEl) {
-      let dbg = '=== PER-IMAGE RAW RESULTS ===\n';
-      if (perImageResults) {
-        perImageResults.forEach((r, i) => {
-          dbg += `\n--- img_${i+1} (${state.uploadedFiles[i]?.name || '?'}) ---\n`;
-          dbg += JSON.stringify(r, null, 2) + '\n';
-        });
-      }
-      dbg += '\n=== COMBINED RESULT ===\n';
-      dbg += JSON.stringify(d, null, 2);
-      dbg += `\n\n=== FLIGHT COUNT: ${d.flights?.length || 0} ===\n`;
-      if (d.flights) {
-        d.flights.forEach((f, i) => {
-          dbg += `Seg${i+1}: ${f.origin?.value || 'NULL'} -> ${f.destination?.value || 'NULL'} | ${f.date?.value || 'NULL'} | ${f.carrier?.value || 'NULL'}${f.flight_number?.value || 'NULL'} | class=${f.booking_class?.value || 'NULL'}\n`;
-        });
-      }
-      debugEl.textContent = dbg;
-    }
-
-    // Render extraction summary
-    if (perImageResults) {
-      renderExtractionSummary(perImageResults);
-    }
-
-    // Handle flights array
-    if (d.flights?.length) {
-      document.getElementById('f-segcount').value = Math.min(d.flights.length, 4);
-      renderSegmentFields();
-      d.flights.forEach((f, i) => {
-        if (i >= 4) return;
-        const setField = (suffix, field) => {
-          const el = document.getElementById(`f-seg${i}-${suffix}`);
-          if (!el || !field || !field.value) return;
-          el.value = field.value.toUpperCase();
-          setSrcBadge(`src-seg${i}-${suffix}`, field.source, field.confidence);
-        };
-        setField('origin', f.origin);
-        setField('dest', f.destination);
-        setField('date', f.date);
-        setField('flightnum', f.flight_number);
-        setField('class', f.booking_class);
-        setField('carrier', f.carrier);
-      });
-    }
-
-    // Shared fields
-    const set = (id, field) => {
-      const el = document.getElementById('f-' + id);
-      if (!el || !field || !field.value) return;
-      el.value = field.value;
-    };
-    set('phone', d.phone);
-    set('paxphone', d.pax_phone);
-    set('email', d.email);
-    set('ff', d.frequent_flyer);
-
-    // Passengers
-    if (d.passengers?.length) {
-      document.getElementById('f-paxcount').value = Math.min(d.passengers.length, 4);
-      updatePaxFields();
-      d.passengers.forEach((p, i) => {
-        if (i >= 4) return;
-        const last = document.getElementById(`f-last${i}`);
-        const first = document.getElementById(`f-first${i}`);
-        const title = document.getElementById(`f-title${i}`);
-        if (last && p.last?.value) last.value = p.last.value.toUpperCase();
-        if (first && p.first?.value) first.value = p.first.value.toUpperCase();
-        if (title && p.title?.value) title.value = p.title.value.toUpperCase();
-      });
-    }
-
-    // Auto set received from
-    const rcvd = document.getElementById('f-rcvdfrom');
-    if (d.passengers?.[0]?.last?.value) rcvd.value = d.passengers[0].last.value.toUpperCase();
-
-    // Confidence warnings
-    const lowFields = [];
-    if (d.flights?.length) {
-      d.flights.forEach((f, i) => {
-        ['origin','destination','date','booking_class','carrier'].forEach(k => {
-          if (f[k]?.confidence === 'low' && f[k]?.value) lowFields.push(`seg${i+1} ${k}`);
-        });
-      });
-    }
-    if (lowFields.length) {
-      const note = document.getElementById('confidenceNote');
-      note.style.display = 'block';
-      note.textContent = `Low confidence on: ${lowFields.join(', ')} — please verify manually.`;
-    } else {
-      document.getElementById('confidenceNote').style.display = 'none';
-    }
-
-    validateRequired();
-  }
-
-  function updatePaxFields() {
-    const count = parseInt(document.getElementById('f-paxcount').value);
-    const container = document.getElementById('paxFields');
-    container.innerHTML = '';
-    for (let i = 0; i < count; i++) {
-      container.innerHTML += `
-        <div class="pax-section">
-          <div class="pax-title">Passenger ${i+1}</div>
-          <div class="form-grid">
-            <div>
-              <label class="required-label">Last Name<span class="req-star">*</span></label>
-              <input type="text" id="f-last${i}" placeholder="SMITH" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-            <div>
-              <label class="required-label">First Name<span class="req-star">*</span></label>
-              <input type="text" id="f-first${i}" placeholder="JOHN" oninput="this.value=this.value.toUpperCase(); validateRequired()">
-            </div>
-            <div>
-              <label class="required-label">Title<span class="req-star">*</span></label>
-              <select id="f-title${i}" onchange="validateRequired()">
-                <option value="">Select...</option>
-                <option value="MR">MR</option>
-                <option value="MRS">MRS</option>
-                <option value="MS">MS</option>
-                <option value="MSTR">MSTR (boy)</option>
-                <option value="MISS">MISS (girl)</option>
-              </select>
-            </div>
-          </div>
-        </div>`;
-    }
-  }
-
-  updatePaxFields(); // init
-
-  function validateRequired() {
-    // Segment fields
-    const segcount = parseInt(document.getElementById('f-segcount')?.value || 1);
-    for (let i = 0; i < segcount; i++) {
-      ['origin','dest','date','class','carrier'].forEach(f => {
-        const el = document.getElementById(`f-seg${i}-${f}`);
-        if (!el) return;
-        if (!el.value.trim()) el.classList.add('required-empty');
-        else el.classList.remove('required-empty');
-      });
-    }
-    // Shared required fields
-    ['f-phone','f-tickdate','f-rcvdfrom'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if (!el.value.trim()) el.classList.add('required-empty');
-      else el.classList.remove('required-empty');
-    });
-    // Passenger fields
-    const paxcount = parseInt(document.getElementById('f-paxcount')?.value || 1);
-    for (let i = 0; i < paxcount; i++) {
-      ['last','first','title'].forEach(f => {
-        const el = document.getElementById(`f-${f}${i}`);
-        if (!el) return;
-        if (!el.value.trim()) el.classList.add('required-empty');
-        else el.classList.remove('required-empty');
-      });
-    }
-  }
-
-  // GENERATE BOTH COMMANDS (no blocking — always shows what we have)
-  function generateCommands() {
-    const segcount = parseInt(document.getElementById('f-segcount').value);
-    const paxcount = parseInt(document.getElementById('f-paxcount').value);
-    const segments = [];
-    const warnings = [];
-
-    // Collect segment data — don't block on missing fields
-    for (let i = 0; i < segcount; i++) {
-      const origin = document.getElementById(`f-seg${i}-origin`)?.value.trim() || '';
-      const dest = document.getElementById(`f-seg${i}-dest`)?.value.trim() || '';
-      const date = document.getElementById(`f-seg${i}-date`)?.value.trim() || '';
-      const carrier = document.getElementById(`f-seg${i}-carrier`)?.value.trim() || '';
-      const flightnum = document.getElementById(`f-seg${i}-flightnum`)?.value.trim() || '';
-      const bookingClass = document.getElementById(`f-seg${i}-class`)?.value.trim() || 'Y';
-
-      // Track missing required fields
-      if (!origin) warnings.push(`Seg ${i+1}: Origin missing`);
-      if (!dest) warnings.push(`Seg ${i+1}: Destination missing`);
-      if (!date) warnings.push(`Seg ${i+1}: Date missing`);
-      if (!carrier) warnings.push(`Seg ${i+1}: Carrier missing`);
-
-      segments.push({ origin, dest, date, carrier, flightnum, bookingClass });
-    }
-
-    state.segments = segments;
-
-    // ---- STAGE 1: Sell / Availability commands ----
-    const stage1Lines = [];
-    segments.forEach((s, i) => {
-      if (s.flightnum && s.carrier) {
-        // Direct sell: 0AA142Y16MARJFKLHR → actually 1AA142Y16MARJFKLHR
-        stage1Lines.push(`1${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}`);
-      } else if (s.origin && s.dest && s.date) {
-        // Availability check: 116MARJFKLHR/AA
-        stage1Lines.push(`1${s.date}${s.origin}${s.dest}${s.carrier ? '/' + s.carrier : ''}`);
-      } else {
-        stage1Lines.push(`// Segment ${i+1}: [INCOMPLETE — fill in origin/dest/date]`);
-      }
-    });
-
-    const allHaveFlightNum = segments.every(s => !!s.flightnum && !!s.carrier);
-    const stage1Cmd = stage1Lines.join('\n');
-
-    // ---- STAGE 2: Full PNR block ----
-    const phone = document.getElementById('f-phone').value.trim().replace(/\D/g,'');
-    const paxphone = document.getElementById('f-paxphone').value.trim().replace(/\D/g,'');
-    const email = document.getElementById('f-email').value.trim();
-    const tickdate = document.getElementById('f-tickdate').value.trim();
-    const rcvdfrom = document.getElementById('f-rcvdfrom').value.trim();
-    const ssr = document.getElementById('f-ssr').value.trim();
-    const ff = document.getElementById('f-ff').value.trim();
-    const sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
-
-    if (!phone) warnings.push('Agency phone missing');
-    if (!tickdate) warnings.push('Ticketing deadline missing');
-    if (!rcvdfrom) warnings.push('Received from missing');
-
-    let stage2Lines = [];
-
-    // Sell lines (direct sell included in Stage 2 as well)
-    if (allHaveFlightNum) {
-      segments.forEach(s => {
-        stage2Lines.push(`0${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}SS1`);
-      });
-    }
-
-    // Passenger names
-    for (let i = 0; i < paxcount; i++) {
-      const last = document.getElementById(`f-last${i}`)?.value.trim() || '';
-      const first = document.getElementById(`f-first${i}`)?.value.trim() || '';
-      const title = document.getElementById(`f-title${i}`)?.value.trim() || 'MR';
-      if (last && first) {
-        stage2Lines.push(`-${last}/${first}${title}`);
-      } else {
-        warnings.push(`Pax ${i+1}: Name missing`);
-        stage2Lines.push(`// Pax ${i+1}: [NAME MISSING]`);
-      }
-    }
-
-    // Phone
-    if (phone) stage2Lines.push(`9${phone}-A`);
-    else stage2Lines.push(`// 9[PHONE]-A`);
-    if (paxphone) stage2Lines.push(`9${paxphone}-B`);
-
-    // Email
-    if (email) stage2Lines.push(`APE-${sabreEmail}`);
-
-    // Frequent Flyer
-    if (ff) {
-      const parts = ff.replace('-','¥').split('¥');
-      const carrier = parts[0] || 'AA';
-      const num = parts[1] || ff;
-      stage2Lines.push(`FFDL${carrier}${num}-1.1`);
-    }
-
-    // SSR
-    if (ssr) stage2Lines.push(`3${ssr}-1.1`);
-
-    // Ticketing deadline
-    stage2Lines.push(tickdate ? `7TAW${tickdate}/` : `// 7TAW[DATE]/`);
-
-    // Received from + end
-    stage2Lines.push(rcvdfrom ? `6${rcvdfrom}` : `// 6[RECEIVED FROM]`);
-    stage2Lines.push(`ER`);
-
-    const stage2Cmd = stage2Lines.join('\n');
-
-    // ---- Render Page 3 ----
-    goToPage(3);
-
-    // Stage 1
-    const segLabel = segcount > 1 ? `${segcount} segments` : '1 segment';
-    const stage1Label = document.querySelector('#page3 .stage-label span:first-child');
-    if (allHaveFlightNum) {
-      stage1Label.textContent = `STAGE 1 — Direct Sell (${segLabel})`;
-    } else {
-      stage1Label.textContent = `STAGE 1 — Availability Check (${segLabel})`;
-    }
-    const out1 = document.getElementById('stage1output');
-    out1.textContent = stage1Cmd;
-    addCopyBtn('stage1output', stage1Cmd);
-
-    // Stage 2
-    const out2 = document.getElementById('stage2output');
-    out2.textContent = stage2Cmd;
-    addCopyBtn('stage2output', stage2Cmd);
-    const stage2Label = document.querySelector('#page3 .card:has(#stage2output) .stage-label span:first-child');
-    if (stage2Label) {
-      stage2Label.textContent = allHaveFlightNum
-        ? 'STAGE 2 — Full PNR Booking Block (includes sell)'
-        : 'STAGE 2 — PNR Completion (paste after sells confirmed)';
-    }
-
-    // Availability input — show only if not all flights have numbers
-    const availCard = document.getElementById('availResponseCard');
-    if (allHaveFlightNum) {
-      availCard.style.display = 'none';
-    } else {
-      availCard.style.display = '';
-    }
-
-    // Warnings
-    const warningsEl = document.getElementById('commandWarnings');
-    if (warnings.length > 0) {
-      warningsEl.style.display = 'block';
-      warningsEl.innerHTML = '<strong>Missing fields:</strong> ' + warnings.join(' | ');
-    } else {
-      warningsEl.style.display = 'none';
-    }
-
-    const pageSub = document.getElementById('page3sub');
-    pageSub.textContent = `// Step 03 — Both commands generated for ${segLabel}. Review and copy.`;
-    showStatus('status3', 'success', `${segLabel} generated. ${warnings.length > 0 ? warnings.length + ' missing field(s) noted.' : 'All fields complete.'}`);
-
-    sendToZapier('commands_generated', {
-      stage1: stage1Cmd, stage2: stage2Cmd,
-      segments: segments.map(s => ({ origin: s.origin, destination: s.dest, date: s.date, carrier: s.carrier, flight_number: s.flightnum || null, booking_class: s.bookingClass })),
-      direct_sell: allHaveFlightNum,
-      warnings
-    });
-  }
-
-  // PARSE AVAIL RESPONSE
-  async function parseAvailResponse() {
-    const resp = document.getElementById('sabreResponse').value.trim();
-    if (!resp) { alert('Paste Sabre availability response first.'); return; }
-
-    const bookingClass = document.getElementById('f-seg0-class')?.value || 'Y';
-
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': state.apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 200,
-          messages: [{
-            role: 'user',
-            content: `From this Sabre GDS availability response, identify the best line number for booking class "${bookingClass}". Return ONLY a JSON like: {"line": "1", "class": "Y"}. No explanation.\n\nSabre response:\n${resp}`
-          }]
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || 'API error');
-      }
-      const data = await res.json();
-      let raw = data.content[0].text.trim().replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-      const parsed = JSON.parse(raw);
-      document.getElementById('f-linenum').value = parsed.line || '1';
-      showStatus('status3', 'success', `Line ${parsed.line} identified for class ${parsed.class}.`);
-    } catch(e) {
-      showStatus('status3', 'error', 'Could not parse response: ' + e.message);
-    }
-  }
-
-  // generateStage2 removed — now handled by generateCommands()
-
-  function addCopyBtn(containerId, text) {
-    const container = document.getElementById(containerId);
-    const existing = container.querySelector('.copy-btn');
-    if (existing) existing.remove();
-    const btn = document.createElement('button');
-    btn.className = 'copy-btn';
-    btn.textContent = 'Copy';
-    btn.onclick = () => {
-      navigator.clipboard.writeText(text);
+}
+
+// ==========================================
+// COPY BUTTON
+// ==========================================
+function addCopyBtn(containerId, text) {
+  var container = document.getElementById(containerId);
+  var existing = container.querySelector('.copy-btn');
+  if (existing) existing.remove();
+  var btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.type = 'button';
+  btn.onclick = function() {
+    navigator.clipboard.writeText(text).then(function() {
       btn.textContent = 'Copied!';
       btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-    };
-    container.appendChild(btn);
-  }
-
-  // PNR LOG
-  function logPNR() {
-    const pnr = document.getElementById('f-pnr').value.trim();
-    const segcount = parseInt(document.getElementById('f-segcount').value);
-    const paxcount = parseInt(document.getElementById('f-paxcount').value);
-    const last = document.getElementById('f-last0')?.value || '';
-    const now = new Date().toISOString().split('T')[0];
-
-    // Build route string from all segments
-    let route = '';
-    for (let i = 0; i < segcount; i++) {
-      const origin = document.getElementById(`f-seg${i}-origin`)?.value || '';
-      const dest = document.getElementById(`f-seg${i}-dest`)?.value || '';
-      if (i === 0) route = `${origin}-${dest}`;
-      else route += `-${dest}`;
-    }
-    const date = document.getElementById('f-seg0-date')?.value || '';
-
-    const log = `${now}\t${pnr}\t${route}\t${date}\t${last}\t${paxcount} PAX\t${segcount} SEG`;
-    navigator.clipboard.writeText(log);
-
-    sendToZapier('pnr_confirmed', {
-      pnr, route, date,
-      passenger_name: last,
-      passenger_count: paxcount,
-      segment_count: segcount,
-      booked_date: now
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
     });
+  };
+  container.appendChild(btn);
+}
 
-    const zapMsg = state.zapierUrl ? ' Also sent to Zapier.' : '';
-    alert('Log entry copied to clipboard:\n' + log + '\n\nPaste into Google Sheets.' + zapMsg);
+// ==========================================
+// PNR LOG
+// ==========================================
+function logPNR() {
+  var pnr = (document.getElementById('f-pnr').value || '').trim();
+  var segcount = parseInt(document.getElementById('f-segcount').value);
+  var paxcount = parseInt(document.getElementById('f-paxcount').value);
+  var last = (document.getElementById('f-last0')?.value || '');
+  var now = new Date().toISOString().split('T')[0];
+  var route = '';
+  for (var i = 0; i < segcount; i++) {
+    var orig = document.getElementById('f-seg' + i + '-origin')?.value || '';
+    var dest = document.getElementById('f-seg' + i + '-dest')?.value || '';
+    route += (i === 0 ? '' : '-') + (i === 0 ? orig + '-' : '') + dest;
   }
+  var date = document.getElementById('f-seg0-date')?.value || '';
+  var log = now + '\t' + pnr + '\t' + route + '\t' + date + '\t' + last + '\t' + paxcount + ' PAX\t' + segcount + ' SEG';
+  navigator.clipboard.writeText(log);
+  sendToZapier('pnr_confirmed', { pnr: pnr, route: route, date: date, passenger: last });
+  alert('Log copied:\n' + log);
+}
 
-  // NAVIGATION
-  function goToPage(n) {
-    document.querySelectorAll('.page').forEach((p,i) => {
-      p.classList.toggle('active', i+1 === n);
-    });
-    [1,2,3].forEach(i => {
-      const dot = document.getElementById('dot'+i);
-      dot.classList.remove('active','done');
-      if (i < n) dot.classList.add('done');
-      else if (i === n) dot.classList.add('active');
-    });
-    window.scrollTo(0,0);
+// ==========================================
+// NAVIGATION
+// ==========================================
+function goToPage(n) {
+  var pages = document.querySelectorAll('.page');
+  for (var i = 0; i < pages.length; i++) {
+    pages[i].classList.toggle('active', i + 1 === n);
   }
-
-  function goBack() { goToPage(1); }
-
-  // QUICK VIEW MODAL
-  function quickview(field) {
-    const src = document.getElementById('src-' + field)?.textContent;
-    const modalContent = document.getElementById('modalContent');
-    modalContent.innerHTML = '';
-
-    if (src?.startsWith('img')) {
-      const idx = parseInt(src.replace('img_','')) - 1;
-      if (state.uploadedDataURLs[idx]) {
-        const img = document.createElement('img');
-        img.src = state.uploadedDataURLs[idx];
-        modalContent.appendChild(img);
-      }
-    } else if (src === 'text') {
-      const pre = document.createElement('pre');
-      pre.textContent = document.getElementById('textInput').value;
-      modalContent.appendChild(pre);
-    }
-
-    document.getElementById('modal').classList.add('open');
+  for (var i = 1; i <= 3; i++) {
+    var dot = document.getElementById('dot' + i);
+    dot.classList.remove('active', 'done');
+    if (i < n) dot.classList.add('done');
+    else if (i === n) dot.classList.add('active');
   }
+  window.scrollTo(0, 0);
+}
 
-  function closeModal() {
-    document.getElementById('modal').classList.remove('open');
-  }
+// ==========================================
+// STATUS & ZAPIER
+// ==========================================
+function showStatus(id, type, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!msg) { el.innerHTML = ''; return; }
+  var icons = { loading: '<div class="spinner"></div>', error: '!', success: 'OK' };
+  el.innerHTML = '<div class="status-bar ' + type + '">' + (icons[type] || '') + ' ' + msg + '</div>';
+}
 
-  // STATUS
-  function showStatus(id, type, msg) {
-    const el = document.getElementById(id);
-    if (!msg) { el.innerHTML = ''; return; }
-    const icons = { loading: '<div class="spinner"></div>', error: '⚠', success: '✓' };
-    el.innerHTML = `<div class="status-bar ${type}">${icons[type]} ${msg}</div>`;
-  }
+async function sendToZapier(event, data) {
+  if (!zapierUrl) return;
+  try {
+    await fetch(zapierUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, mode: 'no-cors',
+      body: JSON.stringify(Object.assign({ event: event, timestamp: new Date().toISOString() }, data)) });
+  } catch(e) {}
+}
 </script>
 </body>
 </html>

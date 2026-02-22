@@ -760,7 +760,7 @@
       <label>Number of Segments</label>
       <select id="f-segcount" onchange="renderSegmentFields()">
         <option value="1">1 — One Way</option>
-        <option value="2">2 — Round Trip</option>
+        <option value="2" selected>2 — Round Trip</option>
         <option value="3">3 — Multi-City</option>
         <option value="4">4 — Multi-City</option>
       </select>
@@ -850,21 +850,23 @@
 
   <div class="actions-row">
     <button class="btn btn-secondary" onclick="goBack()">Back</button>
-    <button class="btn btn-primary" onclick="generateStage1()">Generate Stage 1 Command</button>
+    <button class="btn btn-primary" onclick="generateCommands()">Generate Sabre Commands</button>
   </div>
 </div>
 
 <!-- PAGE 3: Sabre Commands -->
 <div class="page" id="page3">
   <div class="page-title">Sabre Command Output</div>
-  <div class="page-sub" id="page3sub">// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre's response below, then generate Stage 2.</div>
+  <div class="page-sub" id="page3sub">// Step 03 — Both commands generated. Review, copy, and paste into Sabre.</div>
+
+  <div class="note-box" id="commandWarnings" style="display:none; color:var(--yellow);"></div>
 
   <div id="status3"></div>
 
-  <!-- STAGE 1 -->
+  <!-- STAGE 1: SELL / AVAILABILITY -->
   <div class="card">
     <div class="stage-label">
-      <span style="color:var(--accent)">STAGE 1 — Availability Check</span>
+      <span style="color:var(--accent)">STAGE 1 — Sell / Availability</span>
       <span style="color:var(--muted)">Paste into Sabre terminal first</span>
     </div>
     <div class="sabre-output" id="stage1output">
@@ -872,40 +874,36 @@
     </div>
   </div>
 
-  <!-- SABRE RESPONSE INPUT (only for availability search, hidden for direct sell) -->
-  <div class="card" id="availResponseCard">
-    <div class="card-title">📥 Paste Sabre Availability Response</div>
+  <!-- OPTIONAL: SABRE RESPONSE INPUT (only shown if availability check needed) -->
+  <div class="card" id="availResponseCard" style="display:none;">
+    <div class="card-title">Paste Sabre Availability Response (optional)</div>
     <div style="font-size:0.78rem; color:var(--muted); margin-bottom:0.75rem; font-family:var(--font-mono)">
-      After running Stage 1 in Sabre, paste the full terminal response here. AI will identify the correct line number and class.
+      If you ran an availability check, paste the response here to auto-detect the line number.
     </div>
-    <textarea id="sabreResponse" placeholder="Paste Sabre availability response here...
-Example:
-1  AA  100 Y  15MAR  JFKLAX  SS  0900  1230
-2  AA  102 B  15MAR  JFKLAX  SS  1100  1430
-..." style="min-height:100px"></textarea>
+    <textarea id="sabreResponse" placeholder="Paste Sabre availability response here..." style="min-height:80px"></textarea>
     <div class="avail-input-row" style="margin-top:0.75rem">
       <div>
-        <label>Line # to book (auto-filled if you paste response above)</label>
+        <label>Line # to book</label>
         <input type="text" id="f-linenum" placeholder="1">
       </div>
       <button class="btn btn-secondary" onclick="parseAvailResponse()" style="white-space:nowrap">Parse Response</button>
     </div>
   </div>
 
-  <!-- STAGE 2 -->
+  <!-- STAGE 2: FULL PNR BLOCK -->
   <div class="card">
     <div class="stage-label">
       <span style="color:var(--accent2)">STAGE 2 — Full PNR Booking Block</span>
-      <span style="color:var(--muted)">Paste after Stage 1 confirmed</span>
+      <span style="color:var(--muted)">Paste after sells confirmed</span>
     </div>
     <div class="sabre-output" id="stage2output">
-      <span class="placeholder">Generate Stage 2 after pasting Sabre response above...</span>
+      <span class="placeholder">Command will appear here...</span>
     </div>
   </div>
 
   <div class="actions-row">
-    <button class="btn btn-secondary" onclick="goToPage(2)">← Edit Form</button>
-    <button class="btn btn-orange" onclick="generateStage2()">⚡ Generate Stage 2 Command</button>
+    <button class="btn btn-secondary" onclick="goToPage(2)">Edit Form</button>
+    <button class="btn btn-primary" onclick="generateCommands()">Regenerate Commands</button>
   </div>
 
   <!-- PNR CAPTURE -->
@@ -1628,79 +1626,166 @@ No explanation. No markdown. JSON only.` }
     }
   }
 
-  // GENERATE STAGE 1 (multi-segment)
-  function generateStage1() {
+  // GENERATE BOTH COMMANDS (no blocking — always shows what we have)
+  function generateCommands() {
     const segcount = parseInt(document.getElementById('f-segcount').value);
+    const paxcount = parseInt(document.getElementById('f-paxcount').value);
     const segments = [];
+    const warnings = [];
 
+    // Collect segment data — don't block on missing fields
     for (let i = 0; i < segcount; i++) {
-      const origin = document.getElementById(`f-seg${i}-origin`).value.trim();
-      const dest = document.getElementById(`f-seg${i}-dest`).value.trim();
-      const date = document.getElementById(`f-seg${i}-date`).value.trim();
-      const carrier = document.getElementById(`f-seg${i}-carrier`).value.trim();
-      const flightnum = document.getElementById(`f-seg${i}-flightnum`).value.trim();
-      const bookingClass = document.getElementById(`f-seg${i}-class`).value.trim() || 'Y';
+      const origin = document.getElementById(`f-seg${i}-origin`)?.value.trim() || '';
+      const dest = document.getElementById(`f-seg${i}-dest`)?.value.trim() || '';
+      const date = document.getElementById(`f-seg${i}-date`)?.value.trim() || '';
+      const carrier = document.getElementById(`f-seg${i}-carrier`)?.value.trim() || '';
+      const flightnum = document.getElementById(`f-seg${i}-flightnum`)?.value.trim() || '';
+      const bookingClass = document.getElementById(`f-seg${i}-class`)?.value.trim() || 'Y';
 
-      if (!origin || !dest || !date || !carrier) {
-        showStatus('status2', 'error', `Fill required fields for Segment ${i+1}: Origin, Destination, Date, and Carrier.`);
-        return;
-      }
+      // Track missing required fields
+      if (!origin) warnings.push(`Seg ${i+1}: Origin missing`);
+      if (!dest) warnings.push(`Seg ${i+1}: Destination missing`);
+      if (!date) warnings.push(`Seg ${i+1}: Date missing`);
+      if (!carrier) warnings.push(`Seg ${i+1}: Carrier missing`);
+
       segments.push({ origin, dest, date, carrier, flightnum, bookingClass });
     }
 
-    state.segments = segments; // store for Stage 2
-    const allHaveFlightNum = segments.every(s => !!s.flightnum);
-    const isDirectSell = allHaveFlightNum;
+    state.segments = segments;
 
-    const cmds = segments.map(s => {
-      if (s.flightnum) {
-        return `1${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}`;
+    // ---- STAGE 1: Sell / Availability commands ----
+    const stage1Lines = [];
+    segments.forEach((s, i) => {
+      if (s.flightnum && s.carrier) {
+        // Direct sell: 0AA142Y16MARJFKLHR → actually 1AA142Y16MARJFKLHR
+        stage1Lines.push(`1${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}`);
+      } else if (s.origin && s.dest && s.date) {
+        // Availability check: 116MARJFKLHR/AA
+        stage1Lines.push(`1${s.date}${s.origin}${s.dest}${s.carrier ? '/' + s.carrier : ''}`);
       } else {
-        return `1${s.date}${s.origin}${s.dest}/${s.carrier}`;
+        stage1Lines.push(`// Segment ${i+1}: [INCOMPLETE — fill in origin/dest/date]`);
       }
     });
 
-    const cmd = cmds.join('\n');
+    const allHaveFlightNum = segments.every(s => !!s.flightnum && !!s.carrier);
+    const stage1Cmd = stage1Lines.join('\n');
 
+    // ---- STAGE 2: Full PNR block ----
+    const phone = document.getElementById('f-phone').value.trim().replace(/\D/g,'');
+    const paxphone = document.getElementById('f-paxphone').value.trim().replace(/\D/g,'');
+    const email = document.getElementById('f-email').value.trim();
+    const tickdate = document.getElementById('f-tickdate').value.trim();
+    const rcvdfrom = document.getElementById('f-rcvdfrom').value.trim();
+    const ssr = document.getElementById('f-ssr').value.trim();
+    const ff = document.getElementById('f-ff').value.trim();
+    const sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
+
+    if (!phone) warnings.push('Agency phone missing');
+    if (!tickdate) warnings.push('Ticketing deadline missing');
+    if (!rcvdfrom) warnings.push('Received from missing');
+
+    let stage2Lines = [];
+
+    // Sell lines (direct sell included in Stage 2 as well)
+    if (allHaveFlightNum) {
+      segments.forEach(s => {
+        stage2Lines.push(`0${s.carrier}${s.flightnum}${s.bookingClass}${s.date}${s.origin}${s.dest}SS1`);
+      });
+    }
+
+    // Passenger names
+    for (let i = 0; i < paxcount; i++) {
+      const last = document.getElementById(`f-last${i}`)?.value.trim() || '';
+      const first = document.getElementById(`f-first${i}`)?.value.trim() || '';
+      const title = document.getElementById(`f-title${i}`)?.value.trim() || 'MR';
+      if (last && first) {
+        stage2Lines.push(`-${last}/${first}${title}`);
+      } else {
+        warnings.push(`Pax ${i+1}: Name missing`);
+        stage2Lines.push(`// Pax ${i+1}: [NAME MISSING]`);
+      }
+    }
+
+    // Phone
+    if (phone) stage2Lines.push(`9${phone}-A`);
+    else stage2Lines.push(`// 9[PHONE]-A`);
+    if (paxphone) stage2Lines.push(`9${paxphone}-B`);
+
+    // Email
+    if (email) stage2Lines.push(`APE-${sabreEmail}`);
+
+    // Frequent Flyer
+    if (ff) {
+      const parts = ff.replace('-','¥').split('¥');
+      const carrier = parts[0] || 'AA';
+      const num = parts[1] || ff;
+      stage2Lines.push(`FFDL${carrier}${num}-1.1`);
+    }
+
+    // SSR
+    if (ssr) stage2Lines.push(`3${ssr}-1.1`);
+
+    // Ticketing deadline
+    stage2Lines.push(tickdate ? `7TAW${tickdate}/` : `// 7TAW[DATE]/`);
+
+    // Received from + end
+    stage2Lines.push(rcvdfrom ? `6${rcvdfrom}` : `// 6[RECEIVED FROM]`);
+    stage2Lines.push(`ER`);
+
+    const stage2Cmd = stage2Lines.join('\n');
+
+    // ---- Render Page 3 ----
     goToPage(3);
-    const out = document.getElementById('stage1output');
-    out.textContent = cmd;
-    addCopyBtn('stage1output', cmd);
 
-    // Update labels
-    const stage1Label = document.querySelector('#page3 .stage-label span:first-child');
+    // Stage 1
     const segLabel = segcount > 1 ? `${segcount} segments` : '1 segment';
-    if (isDirectSell) {
+    const stage1Label = document.querySelector('#page3 .stage-label span:first-child');
+    if (allHaveFlightNum) {
       stage1Label.textContent = `STAGE 1 — Direct Sell (${segLabel})`;
     } else {
-      stage1Label.textContent = 'STAGE 1 — Availability Check';
+      stage1Label.textContent = `STAGE 1 — Availability Check (${segLabel})`;
+    }
+    const out1 = document.getElementById('stage1output');
+    out1.textContent = stage1Cmd;
+    addCopyBtn('stage1output', stage1Cmd);
+
+    // Stage 2
+    const out2 = document.getElementById('stage2output');
+    out2.textContent = stage2Cmd;
+    addCopyBtn('stage2output', stage2Cmd);
+    const stage2Label = document.querySelector('#page3 .card:has(#stage2output) .stage-label span:first-child');
+    if (stage2Label) {
+      stage2Label.textContent = allHaveFlightNum
+        ? 'STAGE 2 — Full PNR Booking Block (includes sell)'
+        : 'STAGE 2 — PNR Completion (paste after sells confirmed)';
     }
 
+    // Availability input — show only if not all flights have numbers
     const availCard = document.getElementById('availResponseCard');
-    const stage2GenBtn = document.querySelector('#page3 .btn-orange');
-    const pageSub = document.getElementById('page3sub');
-    if (isDirectSell) {
+    if (allHaveFlightNum) {
       availCard.style.display = 'none';
-      stage2GenBtn.style.display = 'none';
-      pageSub.textContent = `// Step 03 — All ${segcount} flight(s) known. Paste Stage 1 into Sabre, confirm sells, then paste Stage 2.`;
-      showStatus('status3', 'success', `${segLabel} — both commands generated. Copy Stage 1 first, then Stage 2.`);
-      generateStage2(true);
     } else {
       availCard.style.display = '';
-      stage2GenBtn.style.display = '';
-      pageSub.textContent = '// Step 03 — Copy Stage 1 (availability) first. Stage 2 (PNR) is ready below — after pasting Sabre response, you can regenerate Stage 2 to include the sell line.';
-      showStatus('status3', 'success', `${segLabel} — both commands generated. Copy Stage 1 first, then Stage 2.`);
-      generateStage2(true);
     }
 
-    sendToZapier('stage1_command', {
-      command: cmd,
-      segments: segments.map(s => ({
-        origin: s.origin, destination: s.dest, date: s.date,
-        carrier: s.carrier, flight_number: s.flightnum || null,
-        booking_class: s.bookingClass
-      })),
-      direct_sell: isDirectSell
+    // Warnings
+    const warningsEl = document.getElementById('commandWarnings');
+    if (warnings.length > 0) {
+      warningsEl.style.display = 'block';
+      warningsEl.innerHTML = '<strong>Missing fields:</strong> ' + warnings.join(' | ');
+    } else {
+      warningsEl.style.display = 'none';
+    }
+
+    const pageSub = document.getElementById('page3sub');
+    pageSub.textContent = `// Step 03 — Both commands generated for ${segLabel}. Review and copy.`;
+    showStatus('status3', 'success', `${segLabel} generated. ${warnings.length > 0 ? warnings.length + ' missing field(s) noted.' : 'All fields complete.'}`);
+
+    sendToZapier('commands_generated', {
+      stage1: stage1Cmd, stage2: stage2Cmd,
+      segments: segments.map(s => ({ origin: s.origin, destination: s.dest, date: s.date, carrier: s.carrier, flight_number: s.flightnum || null, booking_class: s.bookingClass })),
+      direct_sell: allHaveFlightNum,
+      warnings
     });
   }
 
@@ -1743,84 +1828,7 @@ No explanation. No markdown. JSON only.` }
     }
   }
 
-  // GENERATE STAGE 2
-  // skipSell: when true, omit sell-from-availability lines (used for direct sell flow)
-  function generateStage2(skipSell) {
-    const segcount = parseInt(document.getElementById('f-segcount').value);
-    const paxcount = parseInt(document.getElementById('f-paxcount').value);
-    const phone = document.getElementById('f-phone').value.trim().replace(/\D/g,'');
-    const paxphone = document.getElementById('f-paxphone').value.trim().replace(/\D/g,'');
-    const email = document.getElementById('f-email').value.trim();
-    const tickdate = document.getElementById('f-tickdate').value.trim();
-    const rcvdfrom = document.getElementById('f-rcvdfrom').value.trim();
-    const ssr = document.getElementById('f-ssr').value.trim();
-    const ff = document.getElementById('f-ff').value.trim();
-
-    const sabreEmail = email.replace(/_/g, '..').replace(/@/g, '//');
-
-    let lines = [];
-
-    // 1. Sell segments (skip if direct sell — Stage 1 already sold)
-    if (!skipSell) {
-      const linenum = document.getElementById('f-linenum').value.trim() || '1';
-      const bookingClass = document.getElementById('f-seg0-class')?.value.trim() || 'Y';
-      lines.push(`0${bookingClass}${linenum}`);
-    }
-
-    // 2. Passenger names
-    for (let i = 0; i < paxcount; i++) {
-      const last = document.getElementById(`f-last${i}`)?.value.trim() || '';
-      const first = document.getElementById(`f-first${i}`)?.value.trim() || '';
-      const title = document.getElementById(`f-title${i}`)?.value.trim() || 'MR';
-      if (last && first) lines.push(`-${last}/${first}${title}`);
-    }
-
-    // 3. Phone fields
-    if (phone) lines.push(`9${phone}-A`);
-    if (paxphone) lines.push(`9${paxphone}-B`);
-
-    // 4. Email
-    if (email) lines.push(`APE-${sabreEmail}`);
-
-    // 5. Frequent Flyer
-    if (ff) {
-      const parts = ff.replace('-','¥').split('¥');
-      const carrier = parts[0] || 'AA';
-      const num = parts[1] || ff;
-      lines.push(`FFDL${carrier}${num}-1.1`);
-    }
-
-    // 6. SSR
-    if (ssr) lines.push(`3${ssr}-1.1`);
-
-    // 7. Ticketing time limit
-    lines.push(`7TAW${tickdate}/`);
-
-    // 8. Received from + End
-    lines.push(`6${rcvdfrom}`);
-    lines.push(`ER`);
-
-    const cmd = lines.join('\n');
-    const out = document.getElementById('stage2output');
-    out.textContent = cmd;
-    addCopyBtn('stage2output', cmd);
-
-    const stage2Label = document.querySelector('#page3 .card:has(#stage2output) .stage-label span:first-child');
-    if (stage2Label) {
-      stage2Label.textContent = skipSell
-        ? 'STAGE 2 — PNR Completion (paste after Stage 1 confirms)'
-        : 'STAGE 2 — Full PNR Booking Block';
-    }
-
-    sendToZapier('stage2_command', {
-      command: cmd,
-      segment_count: segcount,
-      passenger_count: paxcount,
-      phone, email,
-      ticketing_deadline: tickdate,
-      received_from: rcvdfrom
-    });
-  }
+  // generateStage2 removed — now handled by generateCommands()
 
   function addCopyBtn(containerId, text) {
     const container = document.getElementById(containerId);

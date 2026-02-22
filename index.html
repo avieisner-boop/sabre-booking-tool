@@ -965,45 +965,60 @@ Example:
         content.push({ type: 'text', text: `TEXT INPUT:\n${textVal}` });
       }
 
-      content.push({ type: 'text', text: `You are a travel booking assistant. You have been given ${state.uploadedDataURLs.length} image(s)${textVal ? ' and pasted text' : ''}. CAREFULLY examine EVERY input — each one may contain different types of information.
+      content.push({ type: 'text', text: `You are a travel booking assistant extracting flight data from ${state.uploadedDataURLs.length} image(s)${textVal ? ' and pasted text' : ''}.
 
-Common document types you may see:
-- PASSPORT / ID CARD: Extract passenger name (last, first). The name on the ID is the passenger name.
-- FLIGHT DETAIL PAGE (airline app/website): Shows details for a SPECIFIC flight the user is viewing. Extract the flight number, route (origin/destination cities and airport codes), date, carrier, and fare/booking class from THIS specific flight.
-- FLIGHT SEARCH RESULTS / AVAILABILITY: May show MULTIPLE flights. Look for the one that is SELECTED or HIGHLIGHTED (usually shown in a different color, expanded, or with a checkmark). If unclear which is selected, extract ALL visible flights and mark confidence as "medium".
-- TRIP SUMMARY / BOOKING CONFIRMATION: Shows the user's selected/booked flights. Extract all flight details plus passenger names, contact info.
+STEP 1 — EXTRACT DATA FROM EACH IMAGE INDEPENDENTLY:
+Go through EVERY image one by one. For each image, identify what type it is and extract ALL data visible in that image:
+
+- PASSPORT / ID CARD: Extract passenger last name, first name, title.
+- FLIGHT DETAIL PAGE (airline app/website): Extract the flight number, carrier, route (origin city/airport → destination city/airport), departure/arrival times, cabin/fare class, and booking code. Each detail page typically shows ONE specific flight.
+- TRIP SUMMARY / ITINERARY: Shows the overall trip structure — how many segments, which cities, which dates, departure vs return. This tells you the TOTAL number of flight segments and their ORDER.
+- FLIGHT SEARCH RESULTS / AVAILABILITY: Look for the selected/highlighted flight.
+- BOOKING CONFIRMATION: Extract all flight details plus passenger names, contact info.
 - EMAIL / TEXT: May contain any of the above plus phone, email, special requests.
 
+STEP 2 — COMBINE DATA ACROSS ALL IMAGES:
+After extracting from each image, MERGE the data to build complete flight segments:
+- A trip summary tells you HOW MANY segments there are and their DATES and CITIES.
+- Flight detail pages fill in the FLIGHT NUMBERS, BOOKING CODES, and CARRIERS.
+- Match detail pages to trip summary segments by comparing routes and times.
+- If image A shows "New York to London, March 16" and image B shows "JFK → LHR, flight 142, booking code O", these are the SAME segment — combine them.
+- If the trip shows 2 segments (depart + return), you MUST output 2 flight entries, not 1.
+- Passenger info may come from a completely different image (e.g., a passport).
+
+STEP 3 — ORDER THE FLIGHTS:
+- The "flights" array MUST be in travel order: outbound/depart FIRST (index 0), return SECOND (index 1).
+- Use dates to confirm: earlier date = outbound.
+
 CRITICAL RULES:
-- ONLY extract flight data that you can ACTUALLY READ from the images. NEVER guess or invent flight numbers, routes, dates, or fare classes.
-- If a field is not clearly visible in any image, set its value to null — do NOT fill it with assumed data.
-- Combine information from ALL sources. Name may come from an ID, flights from a search screenshot.
-- Extract EVERY flight segment you can clearly see. One-way = 1 flight, round trip = 2 flights, multi-city = 3+ flights. But ONLY include segments you can actually read from the images.
-- Do NOT ignore any uploaded file.
-- Read airport codes, city names, flight numbers, and dates EXACTLY as shown in the images. Do not swap origin and destination — the departure city is the origin, the arrival city is the destination.
-- For airline app screenshots: the city/airport shown at the TOP or LEFT of an arrow/line is typically the ORIGIN (departure), and the one at the BOTTOM or RIGHT is the DESTINATION (arrival).
-- If a screenshot shows a flight detail page, that IS the flight the user wants — extract it.
+- ONLY include data you can ACTUALLY READ from the images. NEVER guess or invent values.
+- If a field is not visible in ANY image, set its value to null.
+- Do NOT ignore any uploaded file — every image may contribute different pieces of data.
+- Read airport codes, city names, flight numbers, and dates EXACTLY as shown.
+- For airline app screenshots: departure city (top/left of arrow) = origin, arrival city (bottom/right) = destination.
+- If 2 flight detail pages are uploaded, that likely means 2 separate flight segments.
+- If a trip summary shows a round trip (depart + return), there MUST be 2 entries in the flights array.
 
-MULTI-IMAGE CORRELATION:
-- If you see BOTH a trip summary AND individual flight detail pages, CROSS-REFERENCE them:
-  1. The trip summary shows the CORRECT order: the DEPART segment is always first (index 0), the RETURN segment is always second (index 1).
-  2. Match each flight detail page to its corresponding segment in the trip summary using times, routes, and cabin class.
-  3. Flight detail pages provide the flight number, booking code, and carrier that the trip summary may be missing.
-  4. The trip summary provides the travel DATES that detail pages may be missing.
-- The "flights" array in your response MUST be ordered: outbound/depart first, return second. Use dates to determine order (earlier date = outbound).
+Return ONLY a valid JSON object. For each field include "source" (which image: "img_1", "img_2", "img_3", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
 
-Return ONLY a valid JSON object. For each field include "source" ("img_1", "img_2", "img_3", "text", or "unknown") and "confidence" ("high", "medium", "low"). Use null for missing values.
-
-Example structure (use actual values from the images, NOT these placeholders):
+Example structure (use ACTUAL values from the images, NOT these placeholders):
 {
   "flights": [
     {
       "origin": {"value": "XXX", "source": "img_1", "confidence": "high"},
       "destination": {"value": "YYY", "source": "img_1", "confidence": "high"},
-      "date": {"value": "01JAN", "source": "img_1", "confidence": "high"},
+      "date": {"value": "01JAN", "source": "img_2", "confidence": "high"},
       "flight_number": {"value": "000", "source": "img_1", "confidence": "high"},
       "carrier": {"value": "XX", "source": "img_1", "confidence": "high"},
       "booking_class": {"value": "X", "source": "img_1", "confidence": "high"}
+    },
+    {
+      "origin": {"value": "YYY", "source": "img_3", "confidence": "high"},
+      "destination": {"value": "XXX", "source": "img_3", "confidence": "high"},
+      "date": {"value": "08JAN", "source": "img_2", "confidence": "high"},
+      "flight_number": {"value": "001", "source": "img_3", "confidence": "high"},
+      "carrier": {"value": "XX", "source": "img_3", "confidence": "high"},
+      "booking_class": {"value": "Z", "source": "img_3", "confidence": "high"}
     }
   ],
   "passengers": [
@@ -1019,8 +1034,10 @@ Example structure (use actual values from the images, NOT these placeholders):
   "frequent_flyer": {"value": null, "source": "unknown", "confidence": "low"}
 }
 
+IMPORTANT: The example above shows 2 flight segments because data came from multiple images. Notice how "source" fields reference DIFFERENT images — date may come from one image, flight number from another. This is expected. Combine data across images.
+
 Rules:
-- "flights" array: one entry per flight segment you can clearly read from the images. Include only segments with data you can actually see.
+- "flights" array: one entry per flight segment. If a trip summary or multiple detail pages show N segments, include N entries.
 - booking_class: use the specific fare class letter if visible (O, R, B, K, J, etc). If only cabin type is shown, use Y=economy, C=business, F=first, W=premium economy. If no fare class is visible at all, use null.
 - flight_number: ONLY the numeric part (e.g. "550" not "UA550"). Carrier goes in "carrier" field.
 - date: DDMON format (e.g. 03APR). Read the exact date from the image.
@@ -1338,9 +1355,9 @@ Return ONLY the JSON. No explanation. No markdown.` });
     } else {
       availCard.style.display = '';
       stage2GenBtn.style.display = '';
-      pageSub.textContent = '// Step 03 — Copy commands in order. Paste Stage 1 first, paste Sabre\'s response below, then generate Stage 2.';
-      showStatus('status3', '', '');
-      document.getElementById('stage2output').innerHTML = '<span class="placeholder">Generate Stage 2 after pasting Sabre response above...</span>';
+      pageSub.textContent = '// Step 03 — Copy Stage 1 (availability) first. Stage 2 (PNR) is ready below — after pasting Sabre response, you can regenerate Stage 2 to include the sell line.';
+      showStatus('status3', 'success', `${segLabel} — both commands generated. Copy Stage 1 first, then Stage 2.`);
+      generateStage2(true);
     }
 
     sendToZapier('stage1_command', {

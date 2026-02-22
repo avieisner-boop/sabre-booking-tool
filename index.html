@@ -838,6 +838,16 @@
     </div>
   </div>
 
+  <!-- DEBUG PANEL -->
+  <div class="card" style="border-color: rgba(255,107,53,0.3);">
+    <div class="card-title" style="color:var(--accent2); cursor:pointer;" onclick="document.getElementById('debugContent').style.display = document.getElementById('debugContent').style.display === 'none' ? 'block' : 'none'">
+      Debug: Raw Extraction Data (click to toggle)
+    </div>
+    <div id="debugContent" style="display:none;">
+      <pre id="debugOutput" style="background:#050a14; border:1px solid var(--border); border-radius:6px; padding:0.75rem; font-size:0.7rem; color:var(--green); overflow-x:auto; max-height:400px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;"></pre>
+    </div>
+  </div>
+
   <div class="actions-row">
     <button class="btn btn-secondary" onclick="goBack()">Back</button>
     <button class="btn btn-primary" onclick="generateStage1()">Generate Stage 1 Command</button>
@@ -1026,36 +1036,38 @@ Example:
 
 Identify the image type and extract accordingly:
 - PASSPORT / ID CARD: passenger last name, first name, title.
-- FLIGHT DETAIL PAGE (airline app/website): flight number (numeric only, e.g. "142"), carrier (2-letter IATA code, e.g. "AA"), origin airport (3-letter IATA code), destination airport (3-letter IATA code), departure time, arrival time, cabin class (economy/business/first), booking code letter (O, R, B, K, J, Y, etc.), date if shown.
-- TRIP SUMMARY / ITINERARY: number of segments, for EACH segment: origin city, destination city, date (DDMON format like 16MAR), departure time, arrival time, cabin class. A round trip has 2 segments.
+- FLIGHT DETAIL PAGE (airline app/website): flight number (numeric only, e.g. "142"), carrier (2-letter IATA code, e.g. "AA"), origin airport (3-letter IATA code), destination airport (3-letter IATA code), departure time, arrival time, cabin class, booking code letter (O, R, B, K, J, Y, etc.), date if shown.
+- TRIP SUMMARY / ITINERARY: for EACH segment shown: origin city/airport, destination city/airport, date (DDMON format like 16MAR), departure time, arrival time. A round trip has 2 segments — include BOTH.
 - BOOKING CONFIRMATION: all flight details plus passenger names, contact info.
 - EMAIL / TEXT: phone, email, special requests, or any of the above.
 
 For airline app screenshots: the city at the TOP or LEFT of an arrow = ORIGIN (departure), city at BOTTOM or RIGHT = DESTINATION (arrival).
 
-ONLY extract what you can ACTUALLY READ. Use null for anything not visible.
+IMPORTANT: Use JSON null (not the string "null") for any field not visible in the image. If the image shows a round trip with 2 segments, include 2 entries in the flights array. Always use 3-letter IATA airport codes for origin/destination when visible.
 
 Return ONLY valid JSON:
 {
-  "image_type": "flight_detail|trip_summary|passport|booking_confirmation|other",
+  "image_type": "flight_detail",
   "flights": [
     {
-      "origin": "XXX or null",
-      "destination": "YYY or null",
-      "date": "DDMON or null",
-      "flight_number": "numeric only or null",
-      "carrier": "XX or null",
-      "booking_class": "single letter or null",
-      "departure_time": "HH:MM or null",
-      "arrival_time": "HH:MM or null",
-      "cabin": "economy|business|first|premium_economy|null"
+      "origin": "JFK",
+      "destination": "LHR",
+      "date": "16MAR",
+      "flight_number": "142",
+      "carrier": "AA",
+      "booking_class": "O",
+      "departure_time": "19:30",
+      "arrival_time": "07:45",
+      "cabin": "business"
     }
   ],
-  "passengers": [{"last": "NAME or null", "first": "NAME or null", "title": "MR/MRS/MS or null"}],
+  "passengers": [{"last": "SMITH", "first": "JOHN", "title": "MR"}],
   "phone": null,
   "email": null,
   "frequent_flyer": null
 }
+
+Replace the example values with ACTUAL data from the image. Use JSON null for missing fields.
 No explanation. No markdown. JSON only.` }
     ];
 
@@ -1087,9 +1099,30 @@ No explanation. No markdown. JSON only.` }
     return JSON.parse(raw);
   }
 
+  // Clean "null" strings and other junk from extraction results
+  function cleanExtraction(obj) {
+    if (obj === null || obj === undefined) return null;
+    if (typeof obj === 'string') {
+      const s = obj.trim();
+      if (s === 'null' || s === 'N/A' || s === 'n/a' || s === 'none' || s === 'unknown' || s === '') return null;
+      return s;
+    }
+    if (Array.isArray(obj)) return obj.map(cleanExtraction);
+    if (typeof obj === 'object') {
+      const out = {};
+      for (const [k, v] of Object.entries(obj)) {
+        out[k] = cleanExtraction(v);
+      }
+      return out;
+    }
+    return obj;
+  }
+
   // COMBINE PER-IMAGE RESULTS INTO FINAL DATA
   function combineImageResults(results) {
-    console.log('[COMBINE] Input results:', JSON.stringify(results, null, 2));
+    // Clean all "null" strings first
+    results = results.map(cleanExtraction);
+    console.log('[COMBINE] Cleaned results:', JSON.stringify(results, null, 2));
 
     const passengers = [];
     let phone = null, email = null, frequentFlyer = null;
@@ -1433,6 +1466,27 @@ No explanation. No markdown. JSON only.` }
   }
 
   function populatePage2(d, perImageResults) {
+    // Write debug output
+    const debugEl = document.getElementById('debugOutput');
+    if (debugEl) {
+      let dbg = '=== PER-IMAGE RAW RESULTS ===\n';
+      if (perImageResults) {
+        perImageResults.forEach((r, i) => {
+          dbg += `\n--- img_${i+1} (${state.uploadedFiles[i]?.name || '?'}) ---\n`;
+          dbg += JSON.stringify(r, null, 2) + '\n';
+        });
+      }
+      dbg += '\n=== COMBINED RESULT ===\n';
+      dbg += JSON.stringify(d, null, 2);
+      dbg += `\n\n=== FLIGHT COUNT: ${d.flights?.length || 0} ===\n`;
+      if (d.flights) {
+        d.flights.forEach((f, i) => {
+          dbg += `Seg${i+1}: ${f.origin?.value || 'NULL'} -> ${f.destination?.value || 'NULL'} | ${f.date?.value || 'NULL'} | ${f.carrier?.value || 'NULL'}${f.flight_number?.value || 'NULL'} | class=${f.booking_class?.value || 'NULL'}\n`;
+        });
+      }
+      debugEl.textContent = dbg;
+    }
+
     // Render extraction summary
     if (perImageResults) {
       renderExtractionSummary(perImageResults);
